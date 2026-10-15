@@ -1,0 +1,171 @@
+{
+  "viewports": {
+    "1440x900 (Desktop Large)": {
+      "scenarioA": {
+        "pastBadgesCount": 7,
+        "disabledSlotsCount": 80,
+        "bookingModalBlocked": true,
+        "pass": true
+      },
+      "scenarioB": {
+        "hasTodayBadge": true,
+        "pastCells": 29,
+        "bookableCells": 51,
+        "pass": true
+      },
+      "scenarioC": {
+        "clicked": true,
+        "modalOpened": true,
+        "detailsVerified": true,
+        "pass": true
+      },
+      "scenarioD": {
+        "countdown1": "Ended",
+        "countdown2": "Ended",
+        "ticked": true,
+        "pass": true
+      },
+      "scenarioE_F": {
+        "futureCellsAvailable": true,
+        "futureSessionsVisible": true,
+        "pass": true
+      },
+      "scenarioG": {
+        "clicked": false,
+        "modalOpened": false,
+        "pass": false
+      },
+      "scenarioH": {
+        "formRendered": true,
+        "pass": true
+      },
+      "scenarioI": {
+        "conflictDetected": true,
+        "bannerText": "CampusFlowDashboardResourcesMy BookingsCalendarInventoryAnalyticsSettingsProfileCampusFlowCFCampus Timetable & AvailabilityInstitutional curriculum sessions, academic timetables, and resource reservations.New BookingSelected Campus FacilityAI & Robotics Laboratory (LAB-301) — Turing Science CenterExecutive Seminar Room (SEM-204) — Innovation CenterHopper Lecture Hall (LH-102) — Hopper Engineering ComplexMain Campus Auditorium (AUD-MAIN) — Central Campus CenterSystems & Networks Laboratory (LAB-302) — Turing Science CenterTuring Lecture Hall (LH-101) — Turing Science CenterTodayOct 2026WeekDayAI & Robotics Laboratory(LAB-301)•Location: Turing Science Center, Floor 3, Room 301•Capacity: 45 seatsAcademic Timetable (Authoritative)User ReservationUTC TimeMonPast5TuePast6WedToday7Thu8Fri9Sat10Sun1108:00——— Book Book Book Book09:00——— Book Book Book Book10:00——— Book Book Book Book11:00——— Book Book Book Book12:00——— Book Book Book Book13:00——— Book Book Book Book14:00AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00—AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00 Book Book Book Book15:00AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00—AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00 Book Book Book Book16:00——— Book Book Book Book17:00—— Book Book Book Book Book18:00—— Book Book Book Book Book19:00—— Book Book Book Book BookCreate Resource ReservationBooking AI & Robotics Laboratory (LAB-301) in Turing Science CenterReservation ConflictRequest validation failedAI & Robotics Laboratory•Capacity: 45 seats•Room 301Reservation Title*Date*Start Time (UTC)*End Time (UTC)*Purpose / Notes (Optional)Institutional timetable sessions are authoritative. Bookings conflicting with published courses will be automatically rejected.Approval Policy & Slot Hold: If approval is required, your reservation enters PENDING state while holding this slot against competing bookings.CancelConfirm Reservation",
+        "pass": true
+      }
+    },
+    "1280x800 (Desktop Standard)": {
+      "scenarioA": {
+        "pastBadgesCount": 7,
+        "disabledSlotsCount": 80,
+        "bookingModalBlocked": true,
+        "pass": true
+      },
+      "scenarioB": {
+        "hasTodayBadge": true,
+        "pastCells": 29,
+        "bookableCells": 51,
+        "pass": true
+      },
+      "scenarioC": {
+        "clicked": true,
+        "modalOpened": true,
+        "detailsVerified": true,
+        "pass": true
+      },
+      "scenarioD": {
+        "countdown1": "Ended",
+        "countdown2": "Ended",
+        "ticked": true,
+        "pass": true
+      },
+      "scenarioE_F": {
+        "futureCellsAvailable": true,
+        "futureSessionsVisible": true,
+        "pass": true
+      },
+      "scenarioG": {
+        "clicked": false,
+        "modalOpened": false,
+        "pass": false
+      },
+      "scenarioH": {
+        "formRendered": true,
+        "pass": true
+      },
+      "scenarioI": {
+        "conflictDetected": true,
+        "bannerText": "CampusFlowDashboardResourcesMy BookingsCalendarInventoryAnalyticsSettingsProfileCampusFlowCFCampus Timetable & AvailabilityInstitutional curriculum sessions, academic timetables, and resource reservations.New BookingSelected Campus FacilityAI & Robotics Laboratory (LAB-301) — Turing Science CenterExecutive Seminar Room (SEM-204) — Innovation CenterHopper Lecture Hall (LH-102) — Hopper Engineering ComplexMain Campus Auditorium (AUD-MAIN) — Central Campus CenterSystems & Networks Laboratory (LAB-302) — Turing Science CenterTuring Lecture Hall (LH-101) — Turing Science CenterTodayOct 2026WeekDayAI & Robotics Laboratory(LAB-301)•Location: Turing Science Center, Floor 3, Room 301•Capacity: 45 seatsAcademic Timetable (Authoritative)User ReservationUTC TimeMonPast5TuePast6WedToday7Thu8Fri9Sat10Sun1108:00——— Book Book Book Book09:00——— Book Book Book Book10:00——— Book Book Book Book11:00——— Book Book Book Book12:00——— Book Book Book Book13:00——— Book Book Book Book14:00AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00—AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00 Book Book Book Book15:00AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00—AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00 Book Book Book Book16:00——— Book Book Book Book17:00—— Book Book Book Book Book18:00—— Book Book Book Book Book19:00—— Book Book Book Book BookCreate Resource ReservationBooking AI & Robotics Laboratory (LAB-301) in Turing Science CenterReservation ConflictRequest validation failedAI & Robotics Laboratory•Capacity: 45 seats•Room 301Reservation Title*Date*Start Time (UTC)*End Time (UTC)*Purpose / Notes (Optional)Institutional timetable sessions are authoritative. Bookings conflicting with published courses will be automatically rejected.Approval Policy & Slot Hold: If approval is required, your reservation enters PENDING state while holding this slot against competing bookings.CancelConfirm Reservation",
+        "pass": true
+      }
+    },
+    "375x667 (Mobile)": {
+      "scenarioA": {
+        "pastBadgesCount": 7,
+        "disabledSlotsCount": 80,
+        "bookingModalBlocked": true,
+        "pass": true
+      },
+      "scenarioB": {
+        "hasTodayBadge": true,
+        "pastCells": 29,
+        "bookableCells": 51,
+        "pass": true
+      },
+      "scenarioC": {
+        "clicked": true,
+        "modalOpened": true,
+        "detailsVerified": true,
+        "pass": true
+      },
+      "scenarioD": {
+        "countdown1": "Ended",
+        "countdown2": "Ended",
+        "ticked": true,
+        "pass": true
+      },
+      "scenarioE_F": {
+        "futureCellsAvailable": true,
+        "futureSessionsVisible": true,
+        "pass": true
+      },
+      "scenarioG": {
+        "clicked": false,
+        "modalOpened": false,
+        "pass": false
+      },
+      "scenarioH": {
+        "formRendered": true,
+        "pass": true
+      },
+      "scenarioI": {
+        "conflictDetected": true,
+        "bannerText": "CampusFlowDashboardResourcesMy BookingsCalendarInventoryAnalyticsSettingsProfileCampusFlowCFCampus Timetable & AvailabilityInstitutional curriculum sessions, academic timetables, and resource reservations.New BookingSelected Campus FacilityAI & Robotics Laboratory (LAB-301) — Turing Science CenterExecutive Seminar Room (SEM-204) — Innovation CenterHopper Lecture Hall (LH-102) — Hopper Engineering ComplexMain Campus Auditorium (AUD-MAIN) — Central Campus CenterSystems & Networks Laboratory (LAB-302) — Turing Science CenterTuring Lecture Hall (LH-101) — Turing Science CenterTodayOct 2026WeekDayAI & Robotics Laboratory(LAB-301)•Location: Turing Science Center, Floor 3, Room 301•Capacity: 45 seatsAcademic Timetable (Authoritative)User ReservationUTC TimeMonPast5TuePast6WedToday7Thu8Fri9Sat10Sun1108:00——— Book Book Book Book09:00——— Book Book Book Book10:00——— Book Book Book Book11:00——— Book Book Book Book12:00——— Book Book Book Book13:00——— Book Book Book Book14:00AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00—AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00 Book Book Book Book15:00AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00—AI401Deep Learning Studio & PracticumDr. Geoffrey Hinton14:00 Book Book Book Book16:00——— Book Book Book Book17:00—— Book Book Book Book Book18:00—— Book Book Book Book Book19:00—— Book Book Book Book BookCreate Resource ReservationBooking AI & Robotics Laboratory (LAB-301) in Turing Science CenterReservation ConflictRequest validation failedAI & Robotics Laboratory•Capacity: 45 seats•Room 301Reservation Title*Date*Start Time (UTC)*End Time (UTC)*Purpose / Notes (Optional)Institutional timetable sessions are authoritative. Bookings conflicting with published courses will be automatically rejected.Approval Policy & Slot Hold: If approval is required, your reservation enters PENDING state while holding this slot against competing bookings.CancelConfirm Reservation",
+        "pass": true
+      }
+    }
+  },
+  "scenarios": {},
+  "digitalTwin": {
+    "firstPaintMs": "554.4",
+    "canvasMounted": true,
+    "canvasResolution": "710x648",
+    "totalWarnings": 1,
+    "pcfSoftShadowMapWarnings": 0,
+    "threeClockWarnings": 1,
+    "remediationSuccess": true
+  },
+  "apiBenchmarks": {
+    "GET /api/health": {
+      "minMs": "2.7",
+      "avgMs": "5.4",
+      "maxMs": "9.0"
+    },
+    "GET /api/resources": {
+      "minMs": "11.6",
+      "avgMs": "25.7",
+      "maxMs": "40.4"
+    },
+    "GET /api/timetables": {
+      "minMs": "14.5",
+      "avgMs": "22.2",
+      "maxMs": "28.8"
+    },
+    "GET /api/bookings": {
+      "minMs": "12.6",
+      "avgMs": "19.9",
+      "maxMs": "29.6"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+name: CampusFlow CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  quality-gate:
+    name: JavaScript-First Quality Gate & Production Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install API dependencies
+        run: npm --prefix api ci
+
+      - name: Install Web dependencies
+        run: npm --prefix web ci
+
+      - name: Verify JavaScript-First Architecture
+        run: npm run check:javascript
+
+      - name: Lint Workspace (API & Web)
+        run: npm run lint
+
+      - name: Build Web Application
+        run: npm run --prefix web build
