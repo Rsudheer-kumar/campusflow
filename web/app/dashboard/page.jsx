@@ -88,9 +88,17 @@ export default function DashboardPage() {
     const selectedBuildingData = getSelectedBuildingDetails();
     return (<div className="min-h-full py-8 grid-background">
       <PageContainer className="space-y-6">
-        <PageHeader title="Campus Overview" description="Interactive digital twin of the university campus." action={<Button size="sm" icon={<Plus className="h-4 w-4"/>}>
-              New Booking
-            </Button>}/>
+        <PageHeader
+          title="Campus Overview"
+          description="Interactive digital twin of the university campus."
+          action={
+            <Link href="/dashboard/calendar">
+              <Button size="sm" icon={<Plus className="h-4 w-4"/>}>
+                New Booking
+              </Button>
+            </Link>
+          }
+        />
 
         {/* 3D Dashboard Visualization Area */}
         <div className="flex flex-col xl:flex-row gap-6 xl:h-[650px]">

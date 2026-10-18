@@ -23,11 +23,15 @@ export function Navbar({ onOpenMobileMenu, className, ...props }) {
 
       {/* Right side actions */}
       <div className="ml-auto flex items-center gap-2 sm:gap-4">
-        {/* Notifications */}
-        <button aria-label="View notifications" className={cn("relative flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors outline-none", "hover:bg-white/[0.06] hover:text-foreground active:scale-95", "focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:bg-white/[0.06]")}>
-          <Bell className="h-4 w-4" aria-hidden="true"/>
-          <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-danger ring-2 ring-[#050816]"/>
-        </button>
+        {/* Notifications (visibly non-interactive; notification service pending future milestone) */}
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-full text-muted/40 cursor-default select-none"
+          title="No unread notifications"
+          aria-label="Notifications (No unread notifications)"
+          role="status"
+        >
+          <Bell className="h-4 w-4" aria-hidden="true" />
+        </div>
 
         <div className="mx-1 h-5 w-px bg-border" aria-hidden="true"/>
 

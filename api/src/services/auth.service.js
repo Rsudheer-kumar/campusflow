@@ -131,10 +131,9 @@ export class AuthenticationService {
   }
 
   /**
-   * Logs out a user by incrementing their tokenVersion
-   * This invalidates all existing refresh tokens for the user
-   * Existing access tokens remain valid until their 15-minute expiration
-   * Requires user ID to be extracted from access token or other auth context
+   * Logs out a user by incrementing their tokenVersion.
+   * This invalidates all existing tokens (access and refresh) for the user immediately.
+   * Requires user ID to be extracted from access token or other auth context.
    */
   static async logout(userId) {
     // Atomically increment tokenVersion

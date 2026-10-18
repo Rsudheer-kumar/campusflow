@@ -30,17 +30,19 @@ export const mainNavItems = [
         label: "Maintenance",
         href: "/dashboard/maintenance",
         icon: <Wrench className="h-4 w-4"/>,
-        enabled: false, // Phase 3.4 feature
+        enabled: false, // Pending implementation (P20 Module 7)
     },
     {
         label: "Inventory",
         href: "/dashboard/inventory",
         icon: <Boxes className="h-4 w-4"/>,
+        enabled: false, // Pending implementation (P20 Module 8)
     },
     {
         label: "Analytics",
         href: "/dashboard/analytics",
         icon: <BarChart3 className="h-4 w-4"/>,
+        enabled: false, // Pending implementation (P20 Module 9)
     },
 ];
 export const bottomNavItems = [
@@ -48,10 +50,12 @@ export const bottomNavItems = [
         label: "Settings",
         href: "/dashboard/settings",
         icon: <Settings className="h-4 w-4"/>,
+        enabled: false, // Pending implementation
     },
     {
         label: "Profile",
         href: "/dashboard/profile",
         icon: <User className="h-4 w-4"/>,
+        enabled: false, // Pending implementation
     },
 ];

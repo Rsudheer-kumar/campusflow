@@ -37,8 +37,10 @@ export function SidebarContent({ onItemClick, className }) {
       </nav>
 
       {/* Bottom Nav */}
-      <div className="shrink-0 border-t border-border p-3 space-y-1" aria-label="Secondary Navigation">
-        {visibleBottomItems.map((item) => (<NavItem key={item.label} item={item} onClick={onItemClick}/>))}
-      </div>
+      {visibleBottomItems.length > 0 && (
+        <div className="shrink-0 border-t border-border p-3 space-y-1" aria-label="Secondary Navigation">
+          {visibleBottomItems.map((item) => (<NavItem key={item.label} item={item} onClick={onItemClick}/>))}
+        </div>
+      )}
     </div>);
 }

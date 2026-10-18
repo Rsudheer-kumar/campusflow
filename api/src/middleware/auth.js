@@ -26,7 +26,7 @@ import { UnauthorizedError, ForbiddenError } from '../utils/errors.js';
  * @param {import('express').Response} _res - Express response object (unused).
  * @param {import('express').NextFunction} next - Express next function.
  * @returns {Promise<void>}
- * @throws {UnauthorizedError} When Authorization header is missing, malformed, expired, or user is inactive.
+ * @throws {UnauthorizedError} When Authorization header is missing, malformed, expired, token is revoked, or user is inactive.
  */
 export const authenticate = async (req, _res, next) => {
   try {
@@ -60,6 +60,13 @@ export const authenticate = async (req, _res, next) => {
       throw new UnauthorizedError('Account is inactive');
     }
 
+    // Enforce token-version comparison to immediately reject revoked tokens
+    const userTokenVersion = user.tokenVersion ?? 0;
+    const tokenVersion = decoded.tokenVersion ?? 0;
+    if (tokenVersion !== userTokenVersion) {
+      throw new UnauthorizedError('Token has been revoked');
+    }
+
     // Attach trusted user object to req.user (no password hash, no secrets)
     req.user = {
       id: user._id.toString(),
@@ -67,7 +74,7 @@ export const authenticate = async (req, _res, next) => {
       roles: user.roles,
       department: user.department,
       isActive: user.isActive,
-      tokenVersion: user.tokenVersion ?? 0,
+      tokenVersion: userTokenVersion,
     };
 
     next();

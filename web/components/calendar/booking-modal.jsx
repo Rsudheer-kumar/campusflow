@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Clock, Building2, ShieldCheck } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { resolveReservationTimezone } from "@/lib/utils";
 function getInitialValues(initialStartAt, initialEndAt) {
     if (initialStartAt && initialEndAt) {
         const s = new Date(initialStartAt);
@@ -84,7 +85,7 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
                 description: description.trim() || undefined,
                 startAt: startAtDate.toISOString(),
                 endAt: endAtDate.toISOString(),
-                timezone: "America/New_York",
+                timezone: resolveReservationTimezone(resource),
             });
             onSuccess(res.booking);
             handleClose();
