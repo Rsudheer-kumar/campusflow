@@ -13,7 +13,7 @@
 import { ReservationService } from '../services/reservation.service.js';
 import { AvailabilityService } from '../services/availability.service.js';
 import { sendSuccess } from '../utils/response.js';
-import { ForbiddenError, NotFoundError } from '../utils/errors.js';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors.js';
 import { User, UserRole } from '../models/index.js';
 import { Types } from 'mongoose';
 
@@ -247,6 +247,50 @@ export async function calculateSlots(req, res, next) {
     next(error);
   }
 }
+
+export async function getBuildingAvailability(req, res, next) {
+  try {
+    const { building, startAt, endAt, timezone, limit, userId } = req.query;
+
+    // Authenticated identity & quota security:
+    let effectiveUserId = null;
+    if (req.user) {
+      if (userId && userId !== req.user.id) {
+        // Only ADMIN or FACILITY_MANAGER can inspect quota on behalf of another user
+        const isAdminOrManager = req.user.roles.includes(UserRole.ADMIN) || req.user.roles.includes(UserRole.FACILITY_MANAGER);
+        if (!isAdminOrManager) {
+          return next(new ForbiddenError('You are not authorized to evaluate quota for another user'));
+        }
+        effectiveUserId = userId;
+      } else {
+        effectiveUserId = req.user.id;
+      }
+    } else {
+      // Unauthenticated request
+      if (userId) {
+        return next(new BadRequestError('Unauthenticated requests cannot provide a userId'));
+      }
+    }
+
+    const result = await AvailabilityService.checkBuildingAvailability({
+      building,
+      startAt: new Date(startAt),
+      endAt: new Date(endAt),
+      timezone,
+      limit: limit ? Number(limit) : 50,
+      userId: effectiveUserId,
+    });
+
+    if (!result) {
+      return next(new NotFoundError(`Building "${building}" not found or contains no active facilities`));
+    }
+
+    sendSuccess(res, result, 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
 
 export async function approveBooking(req, res, next) {
   try {

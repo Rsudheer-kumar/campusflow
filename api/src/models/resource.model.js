@@ -47,6 +47,28 @@ const ResourceLocationSchema = new Schema(
   }
 );
 
+export const ResourcePhotoSchema = new Schema(
+  {
+    url: {
+      type: String,
+      required: [true, 'Photo URL or data URI is required'],
+      trim: true,
+    },
+    caption: {
+      type: String,
+      trim: true,
+      maxlength: [200, 'Caption cannot exceed 200 characters'],
+    },
+    isPrimary: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  {
+    _id: true,
+  }
+);
+
 export const ResourceSchema = new Schema(
   {
     name: {
@@ -109,6 +131,10 @@ export const ResourceSchema = new Schema(
     },
     attributes: {
       type: [ResourceAttributeSchema],
+      default: [],
+    },
+    photos: {
+      type: [ResourcePhotoSchema],
       default: [],
     },
     metadata: {

@@ -6,48 +6,10 @@ import { useReducedMotion, useInView } from "framer-motion";
 import { CampusGround } from "@/components/3d/campus-ground";
 import { CampusPaths } from "@/components/3d/campus-paths";
 import { CampusBuilding } from "@/components/3d/campus-building";
-import { ResourceMarker } from "@/components/3d/resource-marker";
 import { SceneEnvironment } from "@/components/3d/scene-environment";
 import { WebGLErrorBoundary } from "@/components/3d/error-boundary";
 import { SceneFallback } from "@/components/3d/scene-fallback";
-const BUILDINGS = [
-    {
-        id: "bld-cs",
-        label: "Computer Science",
-        position: [-8.5, 2.5, -5.5],
-        size: [6, 5, 8],
-        type: "lab",
-        resourcesCount: 18,
-        status: "available",
-    },
-    {
-        id: "bld-ai",
-        label: "AI Research",
-        position: [6.5, 3, -5.5],
-        size: [7, 6, 9],
-        type: "research",
-        resourcesCount: 4,
-        status: "limited",
-    },
-    {
-        id: "bld-seminar",
-        label: "Seminar Hall",
-        position: [-6.5, 1.5, 5.5],
-        size: [8, 3, 7],
-        type: "seminar",
-        resourcesCount: 2,
-        status: "occupied",
-    },
-    {
-        id: "bld-sports",
-        label: "Sports Complex",
-        position: [0, 2.5, -14],
-        size: [12, 5, 8],
-        type: "sports",
-        resourcesCount: 8,
-        status: "available",
-    }
-];
+import { VERIFIED_CAMPUS_BUILDINGS } from "@/lib/campus-data";
 function RenderOptimizer({ active }) {
     const { invalidate } = useThree();
     useEffect(() => {
@@ -118,10 +80,14 @@ export function LandingScene() {
                 <SceneEnvironment />
                 <CampusGround />
                 <CampusPaths />
-                {BUILDINGS.map((b) => (<group key={b.id}>
-                    <CampusBuilding position={b.position} size={b.size} type={b.type}/>
-                    <ResourceMarker position={[b.position[0], b.position[1] + b.size[1] / 2 + 1.2, b.position[2]]} label={b.label} count={b.resourcesCount} status={b.status}/>
-                  </group>))}
+                {VERIFIED_CAMPUS_BUILDINGS.map((b) => (<CampusBuilding
+                    key={b.id}
+                    buildingId={b.id}
+                    buildingCode={b.code}
+                    position={b.position}
+                    size={b.size}
+                    type={b.architecturalType}
+                  />))}
                 <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.05} minDistance={15} maxDistance={45} maxPolarAngle={Math.PI / 2.2} enablePan={false} enableZoom={true} autoRotate={shouldAnimate} autoRotateSpeed={0.5} target={[0, 0, 0]}/>
               </Suspense>
             </Canvas>)}

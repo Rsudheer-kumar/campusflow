@@ -84,6 +84,21 @@ export const UserSchema = new Schema(
       type: Date,
       required: false,
     },
+    preferences: {
+      defaultView: {
+        type: String,
+        enum: ['day', 'week', 'month'],
+        default: 'week',
+      },
+      notifications: {
+        type: Boolean,
+        default: true,
+      },
+      timezone: {
+        type: String,
+        default: 'UTC',
+      },
+    },
   },
   {
     timestamps: true,

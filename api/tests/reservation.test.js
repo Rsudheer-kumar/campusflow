@@ -126,8 +126,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
     /* ========================================================================= */
     describe('1. Reservation Domain Model & State Machine', () => {
         it('should create a valid reservation with default CONFIRMED status', async () => {
-            const startAt = zonedTimeToUtc('2026-10-12', '10:00', defaultTz); // Monday
-            const endAt = zonedTimeToUtc('2026-10-12', '11:00', defaultTz);
+            const startAt = zonedTimeToUtc('2026-10-26', '10:00', defaultTz); // Monday
+            const endAt = zonedTimeToUtc('2026-10-26', '11:00', defaultTz);
             const reservation = await Reservation.create({
                 resource: sharedResource._id,
                 user: sharedUser._id,
@@ -146,8 +146,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
             await Reservation.findByIdAndDelete(reservation._id);
         });
         it('should reject reservation where startAt >= endAt', async () => {
-            const startAt = zonedTimeToUtc('2026-10-12', '11:00', defaultTz);
-            const endAt = zonedTimeToUtc('2026-10-12', '10:00', defaultTz); // earlier than start
+            const startAt = zonedTimeToUtc('2026-10-26', '11:00', defaultTz);
+            const endAt = zonedTimeToUtc('2026-10-26', '10:00', defaultTz); // earlier than start
             await assert.rejects(async () => {
                 await Reservation.create({
                     resource: sharedResource._id,
@@ -160,8 +160,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
             }, /Reservation startAt must be earlier than endAt/);
         });
         it('should reject invalid IANA timezone identifiers', async () => {
-            const startAt = new Date('2026-10-12T10:00:00Z');
-            const endAt = new Date('2026-10-12T11:00:00Z');
+            const startAt = new Date('2026-10-26T10:00:00Z');
+            const endAt = new Date('2026-10-26T11:00:00Z');
             await assert.rejects(async () => {
                 await Reservation.create({
                     resource: sharedResource._id,
@@ -187,8 +187,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
             assert.strictEqual(isValidReservationTransition(ReservationStatus.EXPIRED, ReservationStatus.CONFIRMED), false);
         });
         it('should enforce partial unique index preventing duplicate identical active reservations', async () => {
-            const startAt = zonedTimeToUtc('2026-10-12', '13:00', defaultTz);
-            const endAt = zonedTimeToUtc('2026-10-12', '14:00', defaultTz);
+            const startAt = zonedTimeToUtc('2026-10-26', '13:00', defaultTz);
+            const endAt = zonedTimeToUtc('2026-10-26', '14:00', defaultTz);
             const first = await Reservation.create({
                 resource: sharedResource._id,
                 user: sharedUser._id,
@@ -219,8 +219,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
     /* ========================================================================= */
     describe('2. Availability Calculation & Slot Generation', () => {
         it('should report available for valid slot within operating hours', async () => {
-            const startAt = zonedTimeToUtc('2026-10-12', '10:00', defaultTz);
-            const endAt = zonedTimeToUtc('2026-10-12', '11:30', defaultTz);
+            const startAt = zonedTimeToUtc('2026-10-26', '10:00', defaultTz);
+            const endAt = zonedTimeToUtc('2026-10-26', '11:30', defaultTz);
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
                 startAt,
@@ -231,8 +231,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         });
         it('should reject slot outside operating hours (e.g., weekend or late evening)', async () => {
             // Sunday is not in the rule's windows
-            const sundayStart = zonedTimeToUtc('2026-10-11', '10:00', defaultTz);
-            const sundayEnd = zonedTimeToUtc('2026-10-11', '11:00', defaultTz);
+            const sundayStart = zonedTimeToUtc('2026-10-25', '10:00', defaultTz);
+            const sundayEnd = zonedTimeToUtc('2026-10-25', '11:00', defaultTz);
             const resultSunday = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
                 startAt: sundayStart,
@@ -241,8 +241,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
             assert.strictEqual(resultSunday.available, false);
             assert.strictEqual(resultSunday.reason, 'OUTSIDE_OPERATING_HOURS');
             // Monday after 20:00 closing
-            const eveningStart = zonedTimeToUtc('2026-10-12', '20:00', defaultTz);
-            const eveningEnd = zonedTimeToUtc('2026-10-12', '21:00', defaultTz);
+            const eveningStart = zonedTimeToUtc('2026-10-26', '20:00', defaultTz);
+            const eveningEnd = zonedTimeToUtc('2026-10-26', '21:00', defaultTz);
             const resultEvening = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
                 startAt: eveningStart,
@@ -253,8 +253,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         });
         it('should enforce min and max booking duration policy', async () => {
             // Min duration is 30m, test 15m
-            const shortStart = zonedTimeToUtc('2026-10-12', '10:00', defaultTz);
-            const shortEnd = zonedTimeToUtc('2026-10-12', '10:15', defaultTz);
+            const shortStart = zonedTimeToUtc('2026-10-26', '10:00', defaultTz);
+            const shortEnd = zonedTimeToUtc('2026-10-26', '10:15', defaultTz);
             const resultShort = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
                 startAt: shortStart,
@@ -263,8 +263,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
             assert.strictEqual(resultShort.available, false);
             assert.strictEqual(resultShort.reason, 'DURATION_TOO_SHORT');
             // Max duration is 240m (4h), test 300m (5h)
-            const longStart = zonedTimeToUtc('2026-10-12', '10:00', defaultTz);
-            const longEnd = zonedTimeToUtc('2026-10-12', '15:00', defaultTz);
+            const longStart = zonedTimeToUtc('2026-10-26', '10:00', defaultTz);
+            const longEnd = zonedTimeToUtc('2026-10-26', '15:00', defaultTz);
             const resultLong = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
                 startAt: longStart,
@@ -274,10 +274,10 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
             assert.strictEqual(resultLong.reason, 'DURATION_TOO_LONG');
         });
         it('should generate discrete bookable slots across operating window', async () => {
-            // Monday 2026-10-12: 08:00 - 20:00 (12 hours = 12 x 60m slots)
+            // Monday 2026-10-26: 08:00 - 20:00 (12 hours = 12 x 60m slots)
             const slots = await AvailabilityService.calculateSlots({
                 resourceId: sharedResource._id,
-                date: '2026-10-12',
+                date: '2026-10-26',
                 slotDurationMinutes: 60,
             });
             assert.strictEqual(slots.length, 12);
@@ -295,12 +295,12 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
     describe('3. Conflict Detection - All 8 Interval Overlap Permutations', () => {
         let existingReservation = null;
         before(async () => {
-            // Existing active reservation: Monday 2026-10-12 [12:00, 14:00)
+            // Existing active reservation: Monday 2026-10-26 [12:00, 14:00)
             existingReservation = await Reservation.create({
                 resource: sharedResource._id,
                 user: sharedUser._id,
-                startAt: zonedTimeToUtc('2026-10-12', '12:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-12', '14:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-26', '12:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-26', '14:00', defaultTz),
                 timezone: defaultTz,
                 status: ReservationStatus.CONFIRMED,
                 title: `${TEST_PREFIX}Existing Baseline Reservation`,
@@ -314,24 +314,24 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         it('Case 1: Candidate entirely before existing [10:00, 11:30) -> NO conflict', async () => {
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-12', '10:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-12', '11:30', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-26', '10:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-26', '11:30', defaultTz),
             });
             assert.strictEqual(result.available, true);
         });
         it('Case 2: Candidate entirely after existing [14:30, 16:00) -> NO conflict', async () => {
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-12', '14:30', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-12', '16:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-26', '14:30', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-26', '16:00', defaultTz),
             });
             assert.strictEqual(result.available, true);
         });
         it('Case 3: Candidate exactly matches existing [12:00, 14:00) -> CONFLICT', async () => {
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-12', '12:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-12', '14:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-26', '12:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-26', '14:00', defaultTz),
             });
             assert.strictEqual(result.available, false);
             assert.strictEqual(result.reason, 'RESERVATION_CONFLICT');
@@ -339,8 +339,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         it('Case 4: Candidate starts before, ends inside existing [11:00, 13:00) -> CONFLICT', async () => {
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-12', '11:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-12', '13:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-26', '11:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-26', '13:00', defaultTz),
             });
             assert.strictEqual(result.available, false);
             assert.strictEqual(result.reason, 'RESERVATION_CONFLICT');
@@ -348,8 +348,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         it('Case 5: Candidate starts inside, ends after existing [13:00, 15:00) -> CONFLICT', async () => {
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-12', '13:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-12', '15:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-26', '13:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-26', '15:00', defaultTz),
             });
             assert.strictEqual(result.available, false);
             assert.strictEqual(result.reason, 'RESERVATION_CONFLICT');
@@ -357,8 +357,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         it('Case 6: Candidate entirely inside existing [12:30, 13:30) -> CONFLICT', async () => {
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-12', '12:30', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-12', '13:30', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-26', '12:30', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-26', '13:30', defaultTz),
             });
             assert.strictEqual(result.available, false);
             assert.strictEqual(result.reason, 'RESERVATION_CONFLICT');
@@ -366,8 +366,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         it('Case 7: Candidate entirely encloses existing [11:00, 15:00) -> CONFLICT', async () => {
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-12', '11:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-12', '15:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-26', '11:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-26', '15:00', defaultTz),
             });
             assert.strictEqual(result.available, false);
             assert.strictEqual(result.reason, 'RESERVATION_CONFLICT');
@@ -375,16 +375,16 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         it('Case 8a: Candidate touches existing at end boundary [10:00, 12:00) -> NO conflict', async () => {
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-12', '10:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-12', '12:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-26', '10:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-26', '12:00', defaultTz),
             });
             assert.strictEqual(result.available, true);
         });
         it('Case 8b: Candidate touches existing at start boundary [14:00, 16:00) -> NO conflict', async () => {
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-12', '14:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-12', '16:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-26', '14:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-26', '16:00', defaultTz),
             });
             assert.strictEqual(result.available, true);
         });
@@ -395,13 +395,13 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
     describe('4. Blackout Enforcement', () => {
         let blackout = null;
         before(async () => {
-            // Blackout: Tuesday 2026-10-13 [14:00, 16:00)
+            // Blackout: Tuesday 2026-10-27 [14:00, 16:00)
             blackout = await Blackout.create({
                 resource: sharedResource._id,
                 category: BlackoutCategory.MAINTENANCE,
                 reason: `${TEST_PREFIX}Hardware Firmware Upgrade`,
-                startAt: zonedTimeToUtc('2026-10-13', '14:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-13', '16:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-27', '14:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-27', '16:00', defaultTz),
                 isActive: true,
             });
         });
@@ -413,8 +413,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         it('should reject booking that overlaps an active blackout', async () => {
             const result = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-13', '14:30', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-13', '15:30', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-27', '14:30', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-27', '15:30', defaultTz),
             });
             assert.strictEqual(result.available, false);
             assert.strictEqual(result.reason, 'BLACKOUT_CONFLICT');
@@ -422,14 +422,14 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         it('should allow booking that touches blackout boundary [12:00, 14:00) or [16:00, 18:00)', async () => {
             const beforeResult = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-13', '12:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-13', '14:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-27', '12:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-27', '14:00', defaultTz),
             });
             assert.strictEqual(beforeResult.available, true);
             const afterResult = await AvailabilityService.checkAvailability({
                 resourceId: sharedResource._id,
-                startAt: zonedTimeToUtc('2026-10-13', '16:00', defaultTz),
-                endAt: zonedTimeToUtc('2026-10-13', '18:00', defaultTz),
+                startAt: zonedTimeToUtc('2026-10-27', '16:00', defaultTz),
+                endAt: zonedTimeToUtc('2026-10-27', '18:00', defaultTz),
             });
             assert.strictEqual(afterResult.available, true);
         });
@@ -561,8 +561,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
             }
         });
         it('POST /api/bookings should create a reservation (201 Created)', async () => {
-            const startAt = zonedTimeToUtc('2026-10-16', '10:00', defaultTz).toISOString(); // Friday
-            const endAt = zonedTimeToUtc('2026-10-16', '11:00', defaultTz).toISOString();
+            const startAt = zonedTimeToUtc('2026-10-30', '10:00', defaultTz).toISOString(); // Friday
+            const endAt = zonedTimeToUtc('2026-10-30', '11:00', defaultTz).toISOString();
             const res = await fetch(`${baseUrl}/api/bookings`, {
                 method: 'POST',
                 headers: {
@@ -587,8 +587,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         });
         it('POST /api/bookings should reject conflicting reservation (409 Conflict)', async () => {
             // Same slot
-            const startAt = zonedTimeToUtc('2026-10-16', '10:00', defaultTz).toISOString();
-            const endAt = zonedTimeToUtc('2026-10-16', '11:00', defaultTz).toISOString();
+            const startAt = zonedTimeToUtc('2026-10-30', '10:00', defaultTz).toISOString();
+            const endAt = zonedTimeToUtc('2026-10-30', '11:00', defaultTz).toISOString();
             const res = await fetch(`${baseUrl}/api/bookings`, {
                 method: 'POST',
                 headers: {
@@ -665,8 +665,8 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
         });
         it('GET /api/bookings/availability should return availability status', async () => {
             // Friday 10:00 - 11:00 is now free since previous booking was CANCELLED
-            const startAt = encodeURIComponent(zonedTimeToUtc('2026-10-16', '10:00', defaultTz).toISOString());
-            const endAt = encodeURIComponent(zonedTimeToUtc('2026-10-16', '11:00', defaultTz).toISOString());
+            const startAt = encodeURIComponent(zonedTimeToUtc('2026-10-30', '10:00', defaultTz).toISOString());
+            const endAt = encodeURIComponent(zonedTimeToUtc('2026-10-30', '11:00', defaultTz).toISOString());
             const res = await fetch(`${baseUrl}/api/bookings/availability?resourceId=${sharedResource._id}&startAt=${startAt}&endAt=${endAt}`);
             assert.strictEqual(res.status, 200);
             const body = (await res.json());
@@ -674,7 +674,7 @@ describe('CampusFlow Reservation & Booking Engine Integration Tests (Phase 2.5)'
             assert.strictEqual(body.data?.available, true);
         });
         it('GET /api/bookings/slots should return discrete slots', async () => {
-            const res = await fetch(`${baseUrl}/api/bookings/slots?resourceId=${sharedResource._id}&date=2026-10-16&slotDurationMinutes=60`);
+            const res = await fetch(`${baseUrl}/api/bookings/slots?resourceId=${sharedResource._id}&date=2026-10-30&slotDurationMinutes=60`);
             assert.strictEqual(res.status, 200);
             const body = (await res.json());
             assert.strictEqual(body.success, true);

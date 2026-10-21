@@ -12,6 +12,12 @@ import timetableRoutes from './timetable.routes.js';
 import resourceRoutes from './resource.routes.js';
 import approvalRoutes from './approval.routes.js';
 import approvalPolicyRoutes from './approvalPolicy.routes.js';
+import analyticsRoutes from './analytics.routes.js';
+import {
+  availabilityRuleRouter,
+  blackoutRouter,
+  quotaRouter,
+} from './ruleAdmin.routes.js';
 
 const router = Router();
 
@@ -24,6 +30,15 @@ router.use('/health', healthRoutes);
 // Facility & resource catalogue endpoints: /api/resources
 router.use('/resources', resourceRoutes);
 
+// Operating hours & availability rules endpoints: /api/availability-rules
+router.use('/availability-rules', availabilityRuleRouter);
+
+// Blackout intervals & holidays endpoints: /api/blackouts
+router.use('/blackouts', blackoutRouter);
+
+// Departmental & role booking quota endpoints: /api/quotas
+router.use('/quotas', quotaRouter);
+
 // Booking engine endpoints: /api/bookings
 router.use('/bookings', bookingRoutes);
 
@@ -35,5 +50,8 @@ router.use('/approvals', approvalRoutes);
 
 // Approval policy administration endpoints: /api/approval-policies (Phase 3.2)
 router.use('/approval-policies', approvalPolicyRoutes);
+
+// Institutional analytics endpoints: /api/analytics (Phase 3.5)
+router.use('/analytics', analyticsRoutes);
 
 export default router;

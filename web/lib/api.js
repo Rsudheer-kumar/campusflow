@@ -128,6 +128,15 @@ export const api = {
                 setStoredAccessToken(null);
             }
         },
+        getProfile: async () => {
+            return request("/auth/profile");
+        },
+        updateProfile: async (payload) => {
+            return request("/auth/profile", {
+                method: "PATCH",
+                body: JSON.stringify(payload),
+            });
+        },
     },
     // Resources
     resources: {
@@ -166,6 +175,54 @@ export const api = {
         },
         getById: async (id) => {
             return request(`/resources/${id}`);
+        },
+        create: async (payload) => {
+            return request("/resources", {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+        },
+        update: async (id, payload) => {
+            return request(`/resources/${id}`, {
+                method: "PUT",
+                body: JSON.stringify(payload),
+            });
+        },
+        archive: async (id) => {
+            return request(`/resources/${id}`, {
+                method: "DELETE",
+            });
+        },
+        updateStatus: async (id, payload) => {
+            return request(`/resources/${id}/status`, {
+                method: "PATCH",
+                body: JSON.stringify(payload),
+            });
+        },
+        getTypes: async () => {
+            return request("/resources/types");
+        },
+        bulkImport: async (csv) => {
+            return request("/resources/bulk-import", {
+                method: "POST",
+                body: JSON.stringify({ csv }),
+            });
+        },
+        addPhoto: async (id, photo) => {
+            return request(`/resources/${id}/photos`, {
+                method: "POST",
+                body: JSON.stringify(photo),
+            });
+        },
+        deletePhoto: async (id, photoId) => {
+            return request(`/resources/${id}/photos/${photoId}`, {
+                method: "DELETE",
+            });
+        },
+        setPrimaryPhoto: async (id, photoId) => {
+            return request(`/resources/${id}/photos/${photoId}/primary`, {
+                method: "PUT",
+            });
         },
     },
     // Timetable Sessions (Phase 3.1)
@@ -317,6 +374,21 @@ export const api = {
             });
             return request(`/bookings/availability?${searchParams.toString()}`);
         },
+        getBuildingAvailability: async (params) => {
+            const searchParams = new URLSearchParams({
+                building: params.building,
+                startAt: params.startAt,
+                endAt: params.endAt,
+            });
+            if (params.timezone)
+                searchParams.set("timezone", params.timezone);
+            if (params.limit)
+                searchParams.set("limit", String(params.limit));
+            if (params.userId)
+                searchParams.set("userId", params.userId);
+            return request(`/bookings/availability/building?${searchParams.toString()}`);
+        },
+
         getSlots: async (params) => {
             const searchParams = new URLSearchParams({
                 resourceId: params.resourceId,
@@ -387,6 +459,106 @@ export const api = {
         },
         archive: async (id) => {
             return request(`/approval-policies/${id}`, {
+                method: "DELETE",
+            });
+        },
+    },
+    // Institutional Analytics (Phase 3.5)
+    analytics: {
+        getOverview: async () => {
+            return request("/analytics/overview");
+        },
+    },
+    // Operating Hours & Availability Rules (Phase 2 - M2)
+    availabilityRules: {
+        list: async (params = {}) => {
+            const searchParams = new URLSearchParams();
+            if (params.resource) searchParams.set("resource", params.resource);
+            if (params.isActive !== undefined) searchParams.set("isActive", String(params.isActive));
+            const query = searchParams.toString();
+            return request(`/availability-rules${query ? `?${query}` : ""}`);
+        },
+        getById: async (id) => {
+            return request(`/availability-rules/${id}`);
+        },
+        create: async (payload) => {
+            return request("/availability-rules", {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+        },
+        update: async (id, payload) => {
+            return request(`/availability-rules/${id}`, {
+                method: "PUT",
+                body: JSON.stringify(payload),
+            });
+        },
+        delete: async (id) => {
+            return request(`/availability-rules/${id}`, {
+                method: "DELETE",
+            });
+        },
+    },
+    // Blackouts & Holidays (Phase 2 - M2)
+    blackouts: {
+        list: async (params = {}) => {
+            const searchParams = new URLSearchParams();
+            if (params.resource) searchParams.set("resource", params.resource);
+            if (params.category) searchParams.set("category", params.category);
+            if (params.isActive !== undefined) searchParams.set("isActive", String(params.isActive));
+            const query = searchParams.toString();
+            return request(`/blackouts${query ? `?${query}` : ""}`);
+        },
+        getById: async (id) => {
+            return request(`/blackouts/${id}`);
+        },
+        create: async (payload) => {
+            return request("/blackouts", {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+        },
+        update: async (id, payload) => {
+            return request(`/blackouts/${id}`, {
+                method: "PUT",
+                body: JSON.stringify(payload),
+            });
+        },
+        delete: async (id) => {
+            return request(`/blackouts/${id}`, {
+                method: "DELETE",
+            });
+        },
+    },
+    // Departmental & Role Quotas (Phase 2 - M2)
+    quotas: {
+        list: async (params = {}) => {
+            const searchParams = new URLSearchParams();
+            if (params.subjectType) searchParams.set("subjectType", params.subjectType);
+            if (params.scopeType) searchParams.set("scopeType", params.scopeType);
+            if (params.department) searchParams.set("department", params.department);
+            if (params.role) searchParams.set("role", params.role);
+            if (params.isActive !== undefined) searchParams.set("isActive", String(params.isActive));
+            const query = searchParams.toString();
+            return request(`/quotas${query ? `?${query}` : ""}`);
+        },
+        getById: async (id) => {
+            return request(`/quotas/${id}`);
+        },
+        create: async (payload) => {
+            return request("/quotas", {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+        },
+        update: async (id, payload) => {
+            return request(`/quotas/${id}`, {
+                method: "PUT",
+                body: JSON.stringify(payload),
+            });
+        },
+        delete: async (id) => {
+            return request(`/quotas/${id}`, {
                 method: "DELETE",
             });
         },

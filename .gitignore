@@ -40,3 +40,6 @@ mongodb-data/
 mongod-rs0.conf
 *.conf
 
+__pycache__/
+*.py[cod]
+*.blend1

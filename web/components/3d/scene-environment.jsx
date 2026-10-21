@@ -1,24 +1,60 @@
 "use client";
+
 import { memo } from "react";
+
 export const SceneEnvironment = memo(function SceneEnvironment() {
-    return (<>
-      {/* Ambient base - raised slightly for readability */}
-      <ambientLight intensity={0.65} color="#E2E8F0"/>
+  return (
+    <>
+      {/* Balanced ambient base to ensure all architectural facets and relief remain legible */}
+      <ambientLight intensity={0.85} color="#D9E3F0" />
 
-      {/* Main Key Light representing structured moonlight */}
-      <directionalLight position={[20, 30, 15]} intensity={1.5} color="#F8FAFC" castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-camera-far={70} shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30} shadow-bias={-0.0005} // adjusted for cleaner shadows
-    />
+      {/* Hemisphere light providing natural twilight sky & ground color contrast */}
+      <hemisphereLight
+        skyColor="#1E293B"
+        groundColor="#0B1120"
+        intensity={0.8}
+      />
 
-      {/* Stronger cool fill light from opposite side to illuminate dark facets */}
-      <directionalLight position={[-20, 15, -20]} intensity={0.8} color="#7BA7FF"/>
+      {/* Main Golden-Hour Key Light (Inspired by warm sunset in reference photo) */}
+      <directionalLight
+        position={[24, 28, 20]}
+        intensity={2.25}
+        color="#FFF5E0"
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-far={85}
+        shadow-camera-left={-35}
+        shadow-camera-right={35}
+        shadow-camera-top={35}
+        shadow-camera-bottom={-35}
+        shadow-bias={-0.0003}
+        shadow-radius={3}
+      />
 
-      {/* Edge/Rim light from the back to separate buildings from background */}
-      <directionalLight position={[0, 10, -35]} intensity={0.5} color="#4F8CFF"/>
+      {/* Cool Twilight Fill Light from opposite quadrant to reveal architectural depth */}
+      <directionalLight
+        position={[-24, 18, 12]}
+        intensity={1.15}
+        color="#60A5FA"
+      />
 
-      {/* Subtle bottom bounce light to lift pitch black shadows underneath canopies */}
-      <directionalLight position={[0, -5, 0]} intensity={0.3} color="#324B77"/>
+      {/* Sunset Horizon Rim Light (Grazes rooflines, spires, and curved canopies) */}
+      <directionalLight
+        position={[0, 16, -28]}
+        intensity={0.65}
+        color="#FB923C"
+      />
 
-      {/* Atmospheric Fog aligned with our #050816 background */}
-      <fog attach="fog" args={["#050816", 25, 75]}/>
-    </>);
+      {/* Canopy Underside Bounce Light to soften deep shadows below entrance overhangs */}
+      <directionalLight
+        position={[0, -4, 0]}
+        intensity={0.18}
+        color="#38BDF8"
+      />
+
+      {/* Atmospheric Fog aligned with #050816 dark interface theme (recessed for clear campus readability) */}
+      <fog attach="fog" args={["#101827", 65, 150]} />
+    </>
+  );
 });

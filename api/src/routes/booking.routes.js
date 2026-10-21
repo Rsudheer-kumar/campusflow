@@ -14,6 +14,7 @@ import {
   cancelBooking,
   transitionBookingStatus,
   checkAvailability,
+  getBuildingAvailability,
   calculateSlots,
   approveBooking,
   rejectBooking,
@@ -23,7 +24,7 @@ import {
   checkoutBooking,
   pardonNoShowBooking,
 } from '../controllers/booking.controller.js';
-import { authenticate, requireRoles } from '../middleware/auth.js';
+import { authenticate, optionalAuthenticate, requireRoles } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validate.js';
 import { validateMongoId } from '../validators/index.js';
 import {
@@ -31,6 +32,7 @@ import {
   validateCancelBookingBody,
   validateTransitionBookingStatusBody,
   validateCheckAvailabilityQuery,
+  validateBuildingAvailabilityQuery,
   validateCalculateSlotsQuery,
   validateApproveBookingBody,
   validateRejectBookingBody,
@@ -48,6 +50,13 @@ router.get(
   '/availability',
   validateRequest({ query: validateCheckAvailabilityQuery }),
   checkAvailability
+);
+
+router.get(
+  '/availability/building',
+  optionalAuthenticate,
+  validateRequest({ query: validateBuildingAvailabilityQuery }),
+  getBuildingAvailability
 );
 
 router.get(

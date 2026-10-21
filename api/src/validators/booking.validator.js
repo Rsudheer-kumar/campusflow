@@ -416,3 +416,87 @@ export function validatePardonNoShowBody(data) {
     data: { reason: record.reason.trim() },
   };
 }
+
+/**
+ * Validates query parameters for GET /api/bookings/availability/building
+ */
+export function validateBuildingAvailabilityQuery(data) {
+  const record = (data || {});
+  const errors = [];
+
+  // building
+  if (!record.building || typeof record.building !== 'string' || record.building.trim().length === 0) {
+    errors.push({ field: 'building', message: 'building query parameter is required' });
+  } else if (record.building.trim().length > 100) {
+    errors.push({ field: 'building', message: 'building parameter cannot exceed 100 characters' });
+  }
+
+  // startAt
+  let startAtDate = null;
+  if (!record.startAt || typeof record.startAt !== 'string') {
+    errors.push({ field: 'startAt', message: 'startAt is required and must be an ISO date string' });
+  } else {
+    startAtDate = new Date(record.startAt);
+    if (isNaN(startAtDate.getTime())) {
+      errors.push({ field: 'startAt', message: 'startAt is not a valid date string' });
+    }
+  }
+
+  // endAt
+  let endAtDate = null;
+  if (!record.endAt || typeof record.endAt !== 'string') {
+    errors.push({ field: 'endAt', message: 'endAt is required and must be an ISO date string' });
+  } else {
+    endAtDate = new Date(record.endAt);
+    if (isNaN(endAtDate.getTime())) {
+      errors.push({ field: 'endAt', message: 'endAt is not a valid date string' });
+    }
+  }
+
+  if (startAtDate && endAtDate && !isNaN(startAtDate.getTime()) && !isNaN(endAtDate.getTime())) {
+    if (startAtDate.getTime() >= endAtDate.getTime()) {
+      errors.push({ field: 'startAt', message: 'startAt must be earlier than endAt for a half-open interval' });
+    }
+  }
+
+  // timezone
+  if (record.timezone !== undefined) {
+    if (typeof record.timezone !== 'string' || !isValidIanaTimezone(record.timezone)) {
+      errors.push({ field: 'timezone', message: `Invalid IANA timezone identifier: "${record.timezone}"` });
+    }
+  }
+
+  // limit (optional integer between 1 and 50)
+  let parsedLimit = 50;
+  if (record.limit !== undefined) {
+    const l = parseInt(record.limit, 10);
+    if (isNaN(l) || l < 1 || l > 50) {
+      errors.push({ field: 'limit', message: 'limit must be an integer between 1 and 50' });
+    } else {
+      parsedLimit = l;
+    }
+  }
+
+  // userId (optional MongoId)
+  if (record.userId !== undefined) {
+    if (typeof record.userId !== 'string' || !MONGO_ID_REGEX.test(record.userId)) {
+      errors.push({ field: 'userId', message: 'userId must be a valid 24-character hex ObjectId' });
+    }
+  }
+
+  if (errors.length > 0) {
+    return { success: false, errors };
+  }
+
+  return {
+    success: true,
+    data: {
+      building: record.building.trim(),
+      startAt: startAtDate,
+      endAt: endAtDate,
+      timezone: record.timezone ? record.timezone.trim() : undefined,
+      limit: parsedLimit,
+      userId: record.userId,
+    },
+  };
+}

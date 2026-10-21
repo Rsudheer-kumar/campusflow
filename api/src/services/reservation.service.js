@@ -31,6 +31,43 @@ import {
   ValidationError,
 } from '../utils/errors.js';
 
+const MAX_TRANSACTION_RETRIES = 5;
+const resourceReservationQueues = new Map();
+
+function isRetryableTransactionError(error) {
+  return (
+    error?.code === 112 ||
+    error?.code === 251 ||
+    error?.errorLabels?.includes('TransientTransactionError') ||
+    error?.errorLabels?.includes('UnknownTransactionCommitResult')
+  );
+}
+
+function waitForTransactionRetry(attempt) {
+  const delayMs = Math.min(250, 20 * 2 ** attempt) + Math.floor(Math.random() * 20);
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+async function withResourceReservationQueue(resourceId, operation) {
+  const key = resourceId.toString();
+  const previous = resourceReservationQueues.get(key) || Promise.resolve();
+  let release;
+  const current = new Promise((resolve) => {
+    release = resolve;
+  });
+  resourceReservationQueues.set(key, previous.then(() => current));
+
+  try {
+    await previous;
+    return await operation();
+  } finally {
+    release();
+    if (resourceReservationQueues.get(key) === current) {
+      resourceReservationQueues.delete(key);
+    }
+  }
+}
+
 export class ReservationService {
   /**
    * @typedef {Object} CreateReservationParams
@@ -85,13 +122,16 @@ export class ReservationService {
       throw new BadRequestError('Title is required and must be at least 2 characters');
     }
 
-    // 2. Execute within ACID Transaction with Resource Document Serialization
-    const session = await mongoose.startSession();
+    // 2. Serialize same-resource requests within this process before entering the
+    // transaction. MongoDB remains the authoritative concurrency boundary across
+    // multiple API instances, while the queue prevents a local retry storm.
+    return withResourceReservationQueue(resourceId, async () => {
+      for (let attempt = 0; attempt < MAX_TRANSACTION_RETRIES; attempt += 1) {
+      const session = await mongoose.startSession();
+      try {
+        let createdDoc = null;
 
-    try {
-      let createdDoc = null;
-
-      await session.withTransaction(async () => {
+        await session.withTransaction(async () => {
         // Step A: Acquire write lock on Resource by incrementing version
         // This serializes all concurrent bookings attempting to book this same resource
         const resource = await Resource.findByIdAndUpdate(
@@ -254,22 +294,29 @@ export class ReservationService {
 
         await newReservation.save({ session });
         createdDoc = newReservation;
-      });
+        });
 
-      if (!createdDoc) {
-        throw new BadRequestError('Failed to create reservation within transaction');
+        if (!createdDoc) {
+          throw new BadRequestError('Failed to create reservation within transaction');
+        }
+
+        return createdDoc;
+      } catch (error) {
+        // Gracefully handle duplicate key error (code 11000) from partial unique index.
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+          throw new ConflictError('The requested time slot has already been booked by another reservation');
+        }
+        if (!isRetryableTransactionError(error) || attempt === MAX_TRANSACTION_RETRIES - 1) {
+          throw error;
+        }
+        await waitForTransactionRetry(attempt);
+      } finally {
+        await session.endSession();
+      }
       }
 
-      return createdDoc;
-    } catch (error) {
-      // Gracefully handle duplicate key error (code 11000) from partial unique index
-      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
-        throw new ConflictError('The requested time slot has already been booked by another reservation');
-      }
-      throw error;
-    } finally {
-      await session.endSession();
-    }
+      throw new ConflictError('The requested time slot is currently contested; please retry shortly');
+    });
   }
 
   /**

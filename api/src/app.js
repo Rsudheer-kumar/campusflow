@@ -49,8 +49,8 @@ export function createApp() {
   );
 
   // 3. Body Parsing Middleware
-  app.use(express.json({ limit: '10kb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // 3.5. Cookie Parsing Middleware
   app.use(cookieParser());

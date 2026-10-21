@@ -18,6 +18,7 @@ import {
 import { getZonedParts, zonedTimeToUtc, intervalsOverlap } from '../utils/timezone.js';
 import { timeStringToMinutes, isValidCalendarDate } from '../utils/dateValidation.js';
 import { BadRequestError } from '../utils/errors.js';
+import { QuotaService } from './quota.service.js';
 
 /**
  * @typedef {Object} AvailabilityCheckParams
@@ -464,5 +465,722 @@ export class AvailabilityService {
     }
 
     return generatedSlots;
+  }
+
+  /**
+   * Bounded batch availability calculation for all resources in a building.
+   * Uses a coordinated 6-query batch engine reducing O(N) queries to O(1).
+   *
+   * @param {Object} params
+   * @param {string} params.building - Building name matching location.building.
+   * @param {Date} params.startAt - Requested start UTC Date.
+   * @param {Date} params.endAt - Requested end UTC Date.
+   * @param {string} [params.timezone] - Requested or building timezone.
+   * @param {number} [params.limit=50] - Maximum resources to process (capped at 50).
+   * @param {string} [params.userId] - Optional authenticated user ID for quota evaluation.
+   * @param {Date} [params.now=new Date()] - Reference timestamp.
+   * @returns {Promise<Object|null>} Building availability summary and facility list, or null if no resources found.
+   */
+  static async checkBuildingAvailability(params) {
+    const { building, startAt, endAt, timezone, limit = 50, userId, now = new Date() } = params;
+
+    // 1. Fetch matching active resources for the building
+    const safeBuilding = building.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const buildingRegex = new RegExp(`^${safeBuilding}$`, 'i');
+
+    const effectiveLimit = Math.min(Math.max(1, limit), 50);
+    const resources = await Resource.find({
+      'location.building': buildingRegex,
+      isActive: true,
+    })
+      .populate('resourceType', 'name code category')
+      .limit(effectiveLimit)
+      .lean();
+
+    if (!resources || resources.length === 0) {
+      return null;
+    }
+
+    const resourceIds = resources.map((r) => r._id);
+    const UPCOMING_THRESHOLD_MINUTES = 30;
+    const endAtPlusThreshold = new Date(endAt.getTime() + UPCOMING_THRESHOLD_MINUTES * 60000);
+
+    // 2. Coordinated batch queries (Queries 2 to 6)
+    const [rules, blackouts, timetables, activeReservations, upcomingReservations] = await Promise.all([
+      AvailabilityRule.find({ resource: { $in: resourceIds }, isActive: true }).lean(),
+      Blackout.find({
+        resource: { $in: resourceIds },
+        isActive: true,
+        startAt: { $lt: endAt },
+        endAt: { $gt: startAt },
+      }).lean(),
+      TimetableEntry.find({
+        resource: { $in: resourceIds },
+        isPublished: true,
+        startAt: { $lt: endAt },
+        endAt: { $gt: startAt },
+      }).lean(),
+      Reservation.find({
+        resource: { $in: resourceIds },
+        status: { $in: ACTIVE_RESERVATION_STATES },
+        startAt: { $lt: endAt },
+        endAt: { $gt: startAt },
+      }).lean(),
+      Reservation.find({
+        resource: { $in: resourceIds },
+        status: { $in: ACTIVE_RESERVATION_STATES },
+        startAt: { $gte: endAt, $lte: endAtPlusThreshold },
+      }).sort({ startAt: 1 }).lean(),
+    ]);
+
+    // 3. Map documents to resourceId in-memory
+    const rulesByResource = new Map();
+    const blackoutsByResource = new Map();
+    const timetablesByResource = new Map();
+    const reservationsByResource = new Map();
+    const upcomingByResource = new Map();
+
+    for (const rule of rules) {
+      const idStr = rule.resource.toString();
+      if (!rulesByResource.has(idStr)) rulesByResource.set(idStr, []);
+      rulesByResource.get(idStr).push(rule);
+    }
+    for (const b of blackouts) {
+      const idStr = b.resource.toString();
+      if (!blackoutsByResource.has(idStr)) blackoutsByResource.set(idStr, []);
+      blackoutsByResource.get(idStr).push(b);
+    }
+    for (const t of timetables) {
+      const idStr = t.resource.toString();
+      if (!timetablesByResource.has(idStr)) timetablesByResource.set(idStr, []);
+      timetablesByResource.get(idStr).push(t);
+    }
+    for (const r of activeReservations) {
+      const idStr = r.resource.toString();
+      if (!reservationsByResource.has(idStr)) reservationsByResource.set(idStr, []);
+      reservationsByResource.get(idStr).push(r);
+    }
+    for (const u of upcomingReservations) {
+      const idStr = u.resource.toString();
+      if (!upcomingByResource.has(idStr)) upcomingByResource.set(idStr, []);
+      upcomingByResource.get(idStr).push(u);
+    }
+
+    // 4. In-memory evaluation per facility with partial-failure isolation
+    const facilityResults = [];
+
+    for (const resource of resources) {
+      const idStr = resource._id.toString();
+
+      try {
+        // Priority 1: Maintenance Status
+        if (resource.status === ResourceStatus.MAINTENANCE) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'maintenance',
+              reason: 'RESOURCE_UNAVAILABLE',
+              message: 'Resource is currently under maintenance',
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        // Operational Status
+        if (!resource.isActive || resource.status !== ResourceStatus.ACTIVE) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'unavailable',
+              reason: 'RESOURCE_UNAVAILABLE',
+              message: `Resource is currently ${resource.status || 'INACTIVE'} and unavailable`,
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        // Active Rules check
+        const resRules = rulesByResource.get(idStr) || [];
+        if (resRules.length === 0) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'unknown',
+              reason: 'NO_AVAILABILITY_RULE',
+              message: 'No active availability rule is configured for this resource',
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        let applicableRule = null;
+        let localStartParts = null;
+        for (const rule of resRules) {
+          const parts = getZonedParts(startAt, rule.timezone);
+          const dateStr = parts.dateString;
+          if (rule.effectiveFrom && rule.effectiveFrom > dateStr) continue;
+          if (rule.effectiveTo && rule.effectiveTo < dateStr) continue;
+          applicableRule = rule;
+          localStartParts = parts;
+          break;
+        }
+
+        if (!applicableRule || !localStartParts) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'unknown',
+              reason: 'NO_AVAILABILITY_RULE',
+              message: 'No active availability rule is currently effective for this resource on the requested date',
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        // Booking Policy check
+        const durationMinutes = Math.round((endAt.getTime() - startAt.getTime()) / 60000);
+        const policy = applicableRule.bookingPolicy;
+        if (durationMinutes < policy.minDurationMinutes) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'unavailable',
+              reason: 'DURATION_TOO_SHORT',
+              message: `Booking duration (${durationMinutes}m) is below minimum (${policy.minDurationMinutes}m)`,
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        if (durationMinutes > policy.maxDurationMinutes) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'unavailable',
+              reason: 'DURATION_TOO_LONG',
+              message: `Booking duration (${durationMinutes}m) exceeds maximum (${policy.maxDurationMinutes}m)`,
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        const leadTimeMinutes = Math.round((startAt.getTime() - now.getTime()) / 60000);
+        const minLead = policy.minLeadTimeMinutes ?? 0;
+        if (leadTimeMinutes < minLead) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'unavailable',
+              reason: 'LEAD_TIME_VIOLATION',
+              message: `Must be booked at least ${minLead} minutes in advance`,
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        const advanceBookingDays = (startAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+        const maxAdvance = policy.maxAdvanceBookingDays ?? 30;
+        if (advanceBookingDays > maxAdvance) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'unavailable',
+              reason: 'ADVANCE_BOOKING_EXCEEDED',
+              message: `Cannot be booked more than ${maxAdvance} days in advance`,
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        // Operating Window Containment check with 24:00 normalization
+        const localEndParts = getZonedParts(endAt, applicableRule.timezone);
+        const candidateStartTime = localStartParts.timeString;
+        let candidateEndTime = localEndParts.timeString;
+
+        if (localEndParts.dateString !== localStartParts.dateString) {
+          const nextDayOfStart = new Date(Date.UTC(localStartParts.year, localStartParts.month - 1, localStartParts.day + 1));
+          const nextDayStr = `${nextDayOfStart.getUTCFullYear()}-${String(nextDayOfStart.getUTCMonth() + 1).padStart(2, '0')}-${String(nextDayOfStart.getUTCDate()).padStart(2, '0')}`;
+          if (localEndParts.dateString === nextDayStr && localEndParts.timeString === '00:00') {
+            candidateEndTime = '24:00';
+          } else {
+            facilityResults.push({
+              id: idStr,
+              name: resource.name,
+              code: resource.code,
+              capacity: resource.capacity,
+              floor: resource.location?.floor || '1',
+              roomNumber: resource.location?.roomNumber || '',
+              resourceType: resource.resourceType ? {
+                id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+                name: resource.resourceType.name || '',
+                code: resource.resourceType.code || '',
+                category: resource.resourceType.category || '',
+              } : null,
+              generalStatus: resource.status,
+              isActive: resource.isActive,
+              availability: {
+                available: false,
+                visualStatus: 'unavailable',
+                reason: 'OUTSIDE_OPERATING_HOURS',
+                message: 'Booking spans across midnight into a subsequent operating day',
+                occupiedSoon: false,
+                nextBookingAt: null,
+                quota: null,
+              },
+            });
+            continue;
+          }
+        }
+
+        const candidateStartMinutes = timeStringToMinutes(candidateStartTime);
+        const candidateEndMinutes = timeStringToMinutes(candidateEndTime);
+        const dayWindows = applicableRule.windows.filter((w) => w.dayOfWeek === localStartParts.weekday);
+
+        let fallsInWindow = false;
+        for (const win of dayWindows) {
+          const winStartMinutes = timeStringToMinutes(win.startTime);
+          const winEndMinutes = timeStringToMinutes(win.endTime);
+          if (candidateStartMinutes >= winStartMinutes && candidateEndMinutes <= winEndMinutes) {
+            fallsInWindow = true;
+            break;
+          }
+        }
+
+        if (!fallsInWindow) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'unavailable',
+              reason: 'OUTSIDE_OPERATING_HOURS',
+              message: `Requested time ${candidateStartTime}-${candidateEndTime} on ${localStartParts.weekday} is outside configured operating hours`,
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        // Blackout conflict check
+        const resBlackouts = blackoutsByResource.get(idStr) || [];
+        const blackoutConflict = resBlackouts.find((b) => b.startAt < endAt && b.endAt > startAt);
+        if (blackoutConflict) {
+          const isMaintBlackout = blackoutConflict.category === 'MAINTENANCE' || /maint/i.test(blackoutConflict.reason);
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: isMaintBlackout ? 'maintenance' : 'unavailable',
+              reason: 'BLACKOUT_CONFLICT',
+              message: `Conflicts with active blackout: "${blackoutConflict.reason}"`,
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        // Timetable conflict check
+        const resTimetables = timetablesByResource.get(idStr) || [];
+        const timetableConflict = resTimetables.find((t) => t.startAt < endAt && t.endAt > startAt);
+        if (timetableConflict) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'unavailable',
+              reason: 'TIMETABLE_CONFLICT',
+              message: 'The requested time slot conflicts with an academic timetable session',
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        // Active reservation conflict check
+        const resReservations = reservationsByResource.get(idStr) || [];
+        const reservationConflict = resReservations.find((r) => r.startAt < endAt && r.endAt > startAt);
+        if (reservationConflict) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'occupied',
+              reason: 'RESERVATION_CONFLICT',
+              message: 'The requested time slot conflicts with an existing reservation',
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: null,
+            },
+          });
+          continue;
+        }
+
+        // Quota check (if userId provided)
+        let quotaInfo = null;
+        let quotaExceeded = false;
+        let quotaViolation = null;
+
+        if (userId) {
+          const quotaEvaluation = await QuotaService.evaluateQuotas({
+            userId,
+            resourceId: resource._id,
+            startAt,
+            endAt,
+          });
+
+          if (!quotaEvaluation.allowed) {
+            quotaExceeded = true;
+            quotaViolation = quotaEvaluation.violation;
+            quotaInfo = { evaluated: true, allowed: false, violation: quotaViolation };
+          } else {
+            quotaInfo = { evaluated: true, allowed: true };
+          }
+        }
+
+        if (quotaExceeded) {
+          facilityResults.push({
+            id: idStr,
+            name: resource.name,
+            code: resource.code,
+            capacity: resource.capacity,
+            floor: resource.location?.floor || '1',
+            roomNumber: resource.location?.roomNumber || '',
+            resourceType: resource.resourceType ? {
+              id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+              name: resource.resourceType.name || '',
+              code: resource.resourceType.code || '',
+              category: resource.resourceType.category || '',
+            } : null,
+            generalStatus: resource.status,
+            isActive: resource.isActive,
+            availability: {
+              available: false,
+              visualStatus: 'unavailable',
+              reason: 'QUOTA_EXCEEDED',
+              message: 'User booking quota limit exceeded for this resource',
+              occupiedSoon: false,
+              nextBookingAt: null,
+              quota: quotaInfo,
+            },
+          });
+          continue;
+        }
+
+        // All checks passed! Check upcoming booking for Occupied Soon UX modifier
+        const upcomingList = upcomingByResource.get(idStr) || [];
+        const upcomingRes = upcomingList[0];
+        const occupiedSoon = Boolean(upcomingRes);
+
+        facilityResults.push({
+          id: idStr,
+          name: resource.name,
+          code: resource.code,
+          capacity: resource.capacity,
+          floor: resource.location?.floor || '1',
+          roomNumber: resource.location?.roomNumber || '',
+          resourceType: resource.resourceType ? {
+            id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+            name: resource.resourceType.name || '',
+            code: resource.resourceType.code || '',
+            category: resource.resourceType.category || '',
+          } : null,
+          generalStatus: resource.status,
+          isActive: resource.isActive,
+          availability: {
+            available: true,
+            visualStatus: occupiedSoon ? 'occupied_soon' : 'available',
+            reason: null,
+            message: 'Resource is available for booking',
+            occupiedSoon,
+            nextBookingAt: upcomingRes ? upcomingRes.startAt.toISOString() : null,
+            quota: quotaInfo,
+          },
+        });
+      } catch (err) {
+        // Fail closed on individual resource technical error
+        facilityResults.push({
+          id: idStr,
+          name: resource.name,
+          code: resource.code,
+          capacity: resource.capacity,
+          floor: resource.location?.floor || '1',
+          roomNumber: resource.location?.roomNumber || '',
+          resourceType: resource.resourceType ? {
+            id: resource.resourceType._id?.toString() || resource.resourceType.toString(),
+            name: resource.resourceType.name || '',
+            code: resource.resourceType.code || '',
+            category: resource.resourceType.category || '',
+          } : null,
+          generalStatus: resource.status,
+          isActive: resource.isActive,
+          availability: {
+            available: false,
+            visualStatus: 'unknown',
+            reason: 'CALCULATION_ERROR',
+            message: 'Technical failure calculating availability for this resource',
+            occupiedSoon: false,
+            nextBookingAt: null,
+            quota: null,
+            errorDetail: err.message,
+          },
+        });
+      }
+    }
+
+    // 5. Aggregate building summary counts
+    const counts = {
+      available: 0,
+      occupied: 0,
+      maintenance: 0,
+      unavailable: 0,
+      unknown: 0,
+    };
+
+    for (const f of facilityResults) {
+      const vs = f.availability.visualStatus;
+      if (vs === 'available' || vs === 'occupied_soon') {
+        counts.available += 1;
+      } else if (vs === 'occupied') {
+        counts.occupied += 1;
+      } else if (vs === 'maintenance') {
+        counts.maintenance += 1;
+      } else if (vs === 'unknown') {
+        counts.unknown += 1;
+      } else {
+        counts.unavailable += 1;
+      }
+    }
+
+    const total = facilityResults.length;
+    const hasAvailability = counts.available > 0;
+    const availabilityRatio = `${counts.available}/${total}`;
+    const displayBadge = `${counts.available} of ${total} Facilities Available`;
+
+    let buildingVisualState = 'unavailable';
+    if (counts.available === total) {
+      buildingVisualState = 'fully_available';
+    } else if (counts.available > 0) {
+      buildingVisualState = 'partially_available';
+    } else if (counts.occupied === total) {
+      buildingVisualState = 'fully_occupied';
+    } else if (counts.maintenance === total) {
+      buildingVisualState = 'maintenance_blocked';
+    } else if (counts.unknown > 0 && counts.available === 0) {
+      buildingVisualState = 'indeterminate_warning';
+    } else {
+      buildingVisualState = 'unavailable';
+    }
+
+    return {
+      building,
+      queryInterval: {
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+        durationMinutes: Math.round((endAt.getTime() - startAt.getTime()) / 60000),
+        timezone: timezone || 'UTC',
+      },
+      summary: {
+        total,
+        counts,
+        hasAvailability,
+        availabilityRatio,
+        displayBadge,
+        buildingVisualState,
+      },
+      resources: facilityResults,
+    };
   }
 }

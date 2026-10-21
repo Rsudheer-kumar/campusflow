@@ -111,3 +111,16 @@ export const requireRoles = (...roles) => {
     next();
   };
 };
+
+/**
+ * Middleware: optionalAuthenticate
+ * If Authorization header is present with Bearer token, verifies and populates req.user.
+ * If header is absent, continues without error leaving req.user undefined.
+ */
+export const optionalAuthenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
+    return next();
+  }
+  return authenticate(req, res, next);
+};

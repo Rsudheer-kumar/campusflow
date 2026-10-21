@@ -579,8 +579,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             const reservation = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-15T10:00:00.000Z',
-                endAt: '2026-10-15T11:00:00.000Z',
+                startAt: '2026-10-29T10:00:00.000Z',
+                endAt: '2026-10-29T11:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Booking Auto-Confirm`,
             });
@@ -600,8 +600,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             const reservation = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-15T12:00:00.000Z',
-                endAt: '2026-10-15T13:00:00.000Z',
+                startAt: '2026-10-29T12:00:00.000Z',
+                endAt: '2026-10-29T13:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Booking Explicit No Approval`,
             });
@@ -623,8 +623,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             const reservation = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-15T14:00:00.000Z',
-                endAt: '2026-10-15T15:00:00.000Z',
+                startAt: '2026-10-29T14:00:00.000Z',
+                endAt: '2026-10-29T15:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Booking 1-Step`,
             });
@@ -651,8 +651,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             const reservation = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-15T16:00:00.000Z',
-                endAt: '2026-10-15T17:00:00.000Z',
+                startAt: '2026-10-29T16:00:00.000Z',
+                endAt: '2026-10-29T17:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Booking 2-Step`,
             });
@@ -678,8 +678,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-16T09:00:00.000Z',
-                endAt: '2026-10-16T10:00:00.000Z',
+                startAt: '2026-10-30T09:00:00.000Z',
+                endAt: '2026-10-30T10:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Pending Holder`,
             });
@@ -688,8 +688,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
                 await ReservationService.createReservation({
                     resourceId: testResource1._id.toString(),
                     userId: facultyUserCS._id.toString(),
-                    startAt: '2026-10-16T09:00:00.000Z',
-                    endAt: '2026-10-16T10:00:00.000Z',
+                    startAt: '2026-10-30T09:00:00.000Z',
+                    endAt: '2026-10-30T10:00:00.000Z',
                     timezone: defaultTz,
                     title: `${TEST_PREFIX}Competing Booking`,
                 });
@@ -719,8 +719,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             pendingRes = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-17T10:00:00.000Z',
-                endAt: '2026-10-17T11:00:00.000Z',
+                startAt: '2026-10-24T10:00:00.000Z',
+                endAt: '2026-10-24T11:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Two-Step Booking`,
             });
@@ -852,8 +852,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             pendingRes = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-18T14:00:00.000Z',
-                endAt: '2026-10-18T15:00:00.000Z',
+                startAt: '2026-10-25T14:00:00.000Z',
+                endAt: '2026-10-25T15:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Reject Candidate`,
             });
@@ -903,8 +903,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             const newBooking = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: facultyUserCS._id.toString(),
-                startAt: '2026-10-18T14:00:00.000Z',
-                endAt: '2026-10-18T15:00:00.000Z',
+                startAt: '2026-10-25T14:00:00.000Z',
+                endAt: '2026-10-25T15:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Competing Booking After Rejection`,
             });
@@ -960,8 +960,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             csRes = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-19T10:00:00.000Z',
-                endAt: '2026-10-19T11:00:00.000Z',
+                startAt: '2026-10-26T10:00:00.000Z',
+                endAt: '2026-10-26T11:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Queue CS Res`,
             });
@@ -969,8 +969,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             eeRes = await ReservationService.createReservation({
                 resourceId: testResource2._id.toString(),
                 userId: studentUserEE._id.toString(),
-                startAt: '2026-10-19T12:00:00.000Z',
-                endAt: '2026-10-19T13:00:00.000Z',
+                startAt: '2026-10-26T12:00:00.000Z',
+                endAt: '2026-10-26T13:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Queue EE Res`,
             });
@@ -1081,8 +1081,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             const reservation = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-20T10:00:00.000Z',
-                endAt: '2026-10-20T11:00:00.000Z',
+                startAt: '2026-10-27T10:00:00.000Z',
+                endAt: '2026-10-27T11:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Race Double Approval`,
             });
@@ -1128,8 +1128,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             const reservation = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-20T12:00:00.000Z',
-                endAt: '2026-10-20T13:00:00.000Z',
+                startAt: '2026-10-27T12:00:00.000Z',
+                endAt: '2026-10-27T13:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Race Cancel vs Approve`,
             });
@@ -1164,8 +1164,8 @@ describe('CampusFlow Approval Workflow Test Suite (Phase 3.2)', () => {
             const reservation = await ReservationService.createReservation({
                 resourceId: testResource1._id.toString(),
                 userId: studentUserCS._id.toString(),
-                startAt: '2026-10-20T14:00:00.000Z',
-                endAt: '2026-10-20T15:00:00.000Z',
+                startAt: '2026-10-27T14:00:00.000Z',
+                endAt: '2026-10-27T15:00:00.000Z',
                 timezone: defaultTz,
                 title: `${TEST_PREFIX}Race Reject vs Approve`,
             });

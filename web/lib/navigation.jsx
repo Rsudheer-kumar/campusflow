@@ -1,4 +1,4 @@
-import { BarChart3, Boxes, Calendar, CalendarCheck, ClipboardList, Database, LayoutDashboard, Settings, User, Wrench, } from "lucide-react";
+import { BarChart3, Boxes, Calendar, CalendarCheck, ClipboardList, Clock, Database, LayoutDashboard, Settings, ShieldCheck, User, Wrench, } from "lucide-react";
 export const mainNavItems = [
     {
         label: "Dashboard",
@@ -9,6 +9,12 @@ export const mainNavItems = [
         label: "Resources",
         href: "/dashboard/resources",
         icon: <Database className="h-4 w-4"/>,
+    },
+    {
+        label: "Availability & Rules",
+        href: "/dashboard/availability-rules",
+        icon: <Clock className="h-4 w-4"/>,
+        roles: ["ADMIN", "FACILITY_MANAGER"],
     },
     {
         label: "My Bookings",
@@ -27,6 +33,12 @@ export const mainNavItems = [
         roles: ["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD"],
     },
     {
+        label: "Approval Policies",
+        href: "/dashboard/approval-policies",
+        icon: <ShieldCheck className="h-4 w-4"/>,
+        roles: ["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD"],
+    },
+    {
         label: "Maintenance",
         href: "/dashboard/maintenance",
         icon: <Wrench className="h-4 w-4"/>,
@@ -42,7 +54,7 @@ export const mainNavItems = [
         label: "Analytics",
         href: "/dashboard/analytics",
         icon: <BarChart3 className="h-4 w-4"/>,
-        enabled: false, // Pending implementation (P20 Module 9)
+        roles: ["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD"],
     },
 ];
 export const bottomNavItems = [
@@ -50,7 +62,6 @@ export const bottomNavItems = [
         label: "Settings",
         href: "/dashboard/settings",
         icon: <Settings className="h-4 w-4"/>,
-        enabled: false, // Pending implementation
     },
     {
         label: "Profile",

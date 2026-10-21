@@ -16,7 +16,16 @@ function CalendarView() {
     // Selected state
     const [resources, setResources] = useState([]);
     const [selectedResourceId, setSelectedResourceId] = useState("");
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(() => {
+        const qStart = searchParams.get("startAt");
+        if (qStart) {
+            const parsed = new Date(qStart);
+            if (!isNaN(parsed.getTime())) {
+                return parsed;
+            }
+        }
+        return new Date();
+    });
     const [viewMode, setViewMode] = useState("week");
     // Data state
     const [timetables, setTimetables] = useState([]);
@@ -33,6 +42,7 @@ function CalendarView() {
     const [checkInModalBooking, setCheckInModalBooking] = useState(null);
     // 1. Fetch Resources — runs ONCE on mount only.
     const initialResourceIdRef = useRef(null);
+    const initialSlotHandledRef = useRef(false);
     const fetchResources = useCallback(async () => {
         setIsLoadingResources(true);
         setResourceError(null);
@@ -42,8 +52,11 @@ function CalendarView() {
             setResources(fetched);
             setResourceError(null);
             const queryResId = initialResourceIdRef.current;
-            if (queryResId && fetched.some((r) => r._id === queryResId)) {
-                setSelectedResourceId(queryResId);
+            const matched = queryResId
+                ? fetched.find((r) => r._id === queryResId || r.code === queryResId)
+                : null;
+            if (matched) {
+                setSelectedResourceId(matched._id);
             }
             else if (fetched.length > 0) {
                 setSelectedResourceId(fetched[0]._id);
@@ -65,6 +78,17 @@ function CalendarView() {
     }, []);
     useEffect(() => {
         initialResourceIdRef.current = searchParams.get("resourceId");
+        const queryStartAt = searchParams.get("startAt");
+        const queryEndAt = searchParams.get("endAt");
+        let initialSlot = null;
+        if (queryStartAt && queryEndAt) {
+            const s = new Date(queryStartAt);
+            const e = new Date(queryEndAt);
+            if (!isNaN(s.getTime()) && !isNaN(e.getTime()) && s.getTime() < e.getTime()) {
+                initialSlot = { start: s.toISOString(), end: e.toISOString() };
+            }
+        }
+
         let ignore = false;
         api.resources.list({ limit: 50 }).then((res) => {
             if (!ignore) {
@@ -73,14 +97,24 @@ function CalendarView() {
                 setResourceError(null);
                 setIsLoadingResources(false);
                 const queryResId = initialResourceIdRef.current;
-                if (queryResId && fetched.some((r) => r._id === queryResId)) {
-                    setSelectedResourceId(queryResId);
+                const matched = queryResId
+                    ? fetched.find((r) => r._id === queryResId || r.code === queryResId)
+                    : null;
+                if (matched) {
+                    setSelectedResourceId(matched._id);
                 }
                 else if (fetched.length > 0) {
                     setSelectedResourceId(fetched[0]._id);
                 }
                 else {
                     setIsLoading(false);
+                }
+
+                // If a valid slot interval was supplied via query params, prefill and open booking modal
+                if (initialSlot && !initialSlotHandledRef.current) {
+                    initialSlotHandledRef.current = true;
+                    setModalSlot(initialSlot);
+                    setIsModalOpen(true);
                 }
             }
         }).catch((err) => {

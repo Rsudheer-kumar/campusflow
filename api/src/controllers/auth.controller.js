@@ -4,6 +4,7 @@
  */
 
 import { AuthenticationService } from '../services/auth.service.js';
+import { User } from '../models/user.model.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { validateLoginRequest, validateRefreshRequest } from '../validators/index.js';
 import { env } from '../config/env.js';
@@ -128,6 +129,130 @@ export const logout = async (req, res, next) => {
     });
 
     sendSuccess(res, { message: 'Logged out successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/auth/profile
+ * Retrieves authenticated user profile, roles, and preferences
+ */
+export const getProfile = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      sendError(res, 'UNAUTHORIZED', 'Unauthorized', 401);
+      return;
+    }
+
+    const user = await User.findById(userId).select('-passwordHash').lean();
+    if (!user) {
+      sendError(res, 'NOT_FOUND', 'User not found', 404);
+      return;
+    }
+
+    sendSuccess(res, {
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      roles: user.roles,
+      department: user.department || '',
+      identifier: user.identifier || '',
+      isActive: user.isActive,
+      preferences: user.preferences || {
+        defaultView: 'week',
+        notifications: true,
+        timezone: 'UTC',
+      },
+      createdAt: user.createdAt,
+      lastLoginAt: user.lastLoginAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/auth/profile
+ * Updates user profile information and UI preferences
+ */
+export const updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      sendError(res, 'UNAUTHORIZED', 'Unauthorized', 401);
+      return;
+    }
+
+    const { name, department, preferences } = req.body || {};
+    const updates = {};
+
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 100) {
+        sendError(res, 'VALIDATION_ERROR', 'Name must be between 2 and 100 characters', 400);
+        return;
+      }
+      updates.name = name.trim();
+    }
+
+    if (department !== undefined) {
+      if (typeof department !== 'string' || department.length > 100) {
+        sendError(res, 'VALIDATION_ERROR', 'Department cannot exceed 100 characters', 400);
+        return;
+      }
+      updates.department = department.trim();
+    }
+
+    if (preferences !== undefined) {
+      if (typeof preferences !== 'object' || preferences === null) {
+        sendError(res, 'VALIDATION_ERROR', 'Preferences must be an object', 400);
+        return;
+      }
+      const prefUpdates = {};
+      if (preferences.defaultView !== undefined) {
+        if (!['day', 'week', 'month'].includes(preferences.defaultView)) {
+          sendError(res, 'VALIDATION_ERROR', 'Invalid defaultView. Allowed: day, week, month', 400);
+          return;
+        }
+        prefUpdates['preferences.defaultView'] = preferences.defaultView;
+      }
+      if (preferences.notifications !== undefined) {
+        prefUpdates['preferences.notifications'] = Boolean(preferences.notifications);
+      }
+      if (preferences.timezone !== undefined) {
+        prefUpdates['preferences.timezone'] = String(preferences.timezone).trim();
+      }
+      Object.assign(updates, prefUpdates);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select('-passwordHash').lean();
+
+    if (!updatedUser) {
+      sendError(res, 'NOT_FOUND', 'User not found', 404);
+      return;
+    }
+
+    sendSuccess(res, {
+      id: updatedUser._id.toString(),
+      name: updatedUser.name,
+      email: updatedUser.email,
+      roles: updatedUser.roles,
+      department: updatedUser.department || '',
+      identifier: updatedUser.identifier || '',
+      isActive: updatedUser.isActive,
+      preferences: updatedUser.preferences || {
+        defaultView: 'week',
+        notifications: true,
+        timezone: 'UTC',
+      },
+      createdAt: updatedUser.createdAt,
+      lastLoginAt: updatedUser.lastLoginAt,
+    });
   } catch (error) {
     next(error);
   }

@@ -5,10 +5,17 @@ import * as THREE from "three";
 import { cn } from "@/lib/utils";
 import { useReducedMotion } from "framer-motion";
 const statusColorMap = {
-    available: "#32D583", // Success
-    occupied: "#F04438", // Danger
-    limited: "#F79009", // Warning
-    maintenance: "#94A3B8", // Muted
+  fully_available: "#2563EB",
+  partially_available: "#0284C7",
+  available: "#3B82F6",
+  occupied_soon: "#3B82F6",
+  occupied: "#F59E0B",
+  fully_occupied: "#F59E0B",
+  maintenance: "#EF4444",
+  maintenance_blocked: "#EF4444",
+  unavailable: "#64748B",
+  unknown: "#94A3B8",
+  indeterminate_warning: "#94A3B8",
 };
 // Reusable static marker geometry
 const markerGeometry = new THREE.OctahedronGeometry(0.5, 0);
@@ -44,10 +51,11 @@ function getRingMaterial(color) {
     }
     return mat;
 }
-export const ResourceMarker = memo(function ResourceMarker({ buildingId, position, label, count, status, onClick, onSelect, selected = false, }) {
+export const ResourceMarker = memo(function ResourceMarker({ buildingId, position, label, count, badgeText, status = "available", onClick, onSelect, selected = false, labelOffset = [0, 0.72, 0], }) {
     const [hovered, setHovered] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
-    const color = statusColorMap[status];
+    const color = statusColorMap[status] || "#64748B";
+
     const prefersReducedMotion = useReducedMotion();
     // Safely mount HTML overlay on animation frame to prevent React 19 concurrent unmount collision
     useEffect(() => {
@@ -91,18 +99,18 @@ export const ResourceMarker = memo(function ResourceMarker({ buildingId, positio
         {selected && (<mesh rotation={[Math.PI / 2, 0, 0]} position={[0, -0.6, 0]} geometry={ringGeometry} material={ringMaterial}/>)}
 
         {/* HTML UI Panel (anchored to 3D position) */}
-        {isMounted && (<Html position={[0, 0.8, 0]} center distanceFactor={16} zIndexRange={[100, 0]} style={{
+        {isMounted && (<Html position={labelOffset} center distanceFactor={20} zIndexRange={[100, 0]} style={{
                 transition: "opacity 0.2s ease-out, transform 0.2s ease-out",
                 opacity: hovered || selected ? 1 : 0.85,
             }}>
-            <button type="button" aria-label={`${label}. ${count} resources. Status: ${status}.`} className={cn("flex cursor-pointer select-none flex-col items-center gap-1 transition-transform outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-full", selected ? "scale-110" : "scale-100 hover:scale-[1.03]")} onClick={(e) => {
+            <button type="button" aria-label={`${label}. ${count} resources. Status: ${status}.`} className={cn("flex cursor-pointer select-none flex-col items-center gap-1 transition-transform outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-full", selected ? "scale-105" : "scale-100 hover:scale-[1.03]")} onClick={(e) => {
                 e.stopPropagation();
                 onClick?.();
             }}>
-              <div className="flex items-center gap-2 whitespace-nowrap rounded-full border border-white/20 bg-[#0B1224] px-4 py-1.5 font-sans shadow-xl">
-                <span className="h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]" style={{ backgroundColor: color, boxShadow: `0 0 10px ${color}` }}/>
-                <span className="font-semibold text-white/95 text-sm tracking-wide">{label}</span>
-                <span className="text-white/60 text-sm font-medium">({count})</span>
+              <div className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/20 bg-[#111C30]/95 px-2.5 py-1 font-sans shadow-xl">
+                <span className="h-1.5 w-1.5 rounded-full shadow-[0_0_6px_rgba(0,0,0,0.5)]" style={{ backgroundColor: color, boxShadow: `0 0 7px ${color}` }}/>
+                <span className="font-semibold text-white/95 text-[10px] sm:text-[11px] tracking-wide">{label}</span>
+                <span className="text-white/60 text-[10px] font-medium">({count})</span>
               </div>
 
               {/* Contextual tooltip content only visible when selected */}
