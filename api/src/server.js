@@ -36,9 +36,11 @@ async function startServer() {
         replicaSet: readiness.setName || 'standalone',
       });
 
-      if (readiness.setName && readiness.setName !== 'rs0') {
+      if (readiness.setName) {
+        logger.info(`MongoDB replica set detected: "${readiness.setName}"`);
+      } else {
         logger.warn(
-          `Connected to replica set "${readiness.setName}", expected "rs0". Ensure transaction support is configured properly.`
+          'MongoDB connected without replica set topology — transaction support should be verified before relying on multi-document ACID operations.'
         );
       }
 
