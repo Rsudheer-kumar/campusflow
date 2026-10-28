@@ -5,6 +5,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { app } from '../src/app.js';
+import { env } from '../src/config/env.js';
 describe('CampusFlow API Foundation & Health Tests', () => {
     let server;
     let baseUrl;
@@ -45,7 +46,8 @@ describe('CampusFlow API Foundation & Health Tests', () => {
         assert.strictEqual(body.data.healthCheck, '/api/health');
     });
     it('GET /api/nonexistent-route should return structured 404 JSON', async () => {
-        const res = await fetch(`${baseUrl}/api/nonexistent-route`);
+        const headers = env.PROXY_SECRET ? { 'x-campusflow-proxy-secret': env.PROXY_SECRET } : {};
+        const res = await fetch(`${baseUrl}/api/nonexistent-route`, { headers });
         assert.strictEqual(res.status, 404);
         const body = (await res.json());
         assert.strictEqual(body.success, false);
@@ -63,5 +65,28 @@ describe('CampusFlow API Foundation & Health Tests', () => {
         assert.strictEqual(body.success, false);
         assert.strictEqual(body.error.code, 'INVALID_JSON');
         assert.strictEqual(body.error.message, 'Malformed JSON in request body');
+    });
+    it('GET /api/health/live should return 200 OK process liveness probe', async () => {
+        const res = await fetch(`${baseUrl}/api/health/live`);
+        assert.strictEqual(res.status, 200);
+        const body = (await res.json());
+        assert.strictEqual(body.success, true);
+        assert.strictEqual(body.data.status, 'alive');
+        assert.ok(typeof body.data.uptime === 'number');
+        assert.ok(typeof body.data.timestamp === 'string');
+    });
+    it('GET /api/health/ready distinguishes database readiness from Redis optionality', async () => {
+        const res = await fetch(`${baseUrl}/api/health/ready`);
+        const body = (await res.json());
+        // In isolated test without real DB connection, readiness responds truthfully with 503 SERVICE_UNAVAILABLE
+        // but crucially reports database dependency state, not Redis
+        if (res.status === 200) {
+            assert.strictEqual(body.data.status, 'ready');
+            assert.strictEqual(body.data.database, 'connected');
+        } else {
+            assert.strictEqual(res.status, 503);
+            assert.strictEqual(body.error.code, 'SERVICE_UNAVAILABLE');
+            assert.ok(['disconnected', 'connecting', 'error'].includes(body.error.details.database));
+        }
     });
 });

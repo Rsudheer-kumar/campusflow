@@ -53,6 +53,33 @@ function isValidEnv(value) {
   return value === 'development' || value === 'production' || value === 'test';
 }
 
+export function validateMongoUri(value, name = 'MONGODB_URI') {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+
+  if (value !== value.trim()) {
+    throw new Error(`Invalid ${name}: expected a valid MongoDB connection URI`);
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`Invalid ${name}: expected a valid MongoDB connection URI`);
+  }
+
+  if (
+    !['mongodb:', 'mongodb+srv:'].includes(parsed.protocol) ||
+    !parsed.hostname ||
+    !/^\/[^/]+$/.test(parsed.pathname)
+  ) {
+    throw new Error(`Invalid ${name}: expected a MongoDB connection URI with a database name`);
+  }
+
+  return value;
+}
+
 /**
  * Derives an isolated test database URI from the base URI by appending `_test` to the database name.
  * Example: mongodb://localhost:27017/campusflow -> mongodb://localhost:27017/campusflow_test
@@ -121,29 +148,55 @@ export function assertApprovedTestMongoUri(uri) {
   return uri;
 }
 
-function parseEnv() {
-  const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
+export function parseEnv(environment = process.env) {
+  const nodeEnv = (environment.NODE_ENV || 'development').toLowerCase();
   const currentEnv = isValidEnv(nodeEnv) ? nodeEnv : 'development';
 
-  const port = parseNumber(process.env.PORT, 5000);
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/campusflow';
-  const mongoTestUri = process.env.MONGODB_TEST_URI || deriveTestMongoUri(mongoUri);
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
-  const bcryptSaltRounds = parseNumber(process.env.BCRYPT_SALT_ROUNDS, 12);
+  const port = parseNumber(environment.PORT, 5000);
+  const mongoUri = currentEnv === 'production'
+    ? validateMongoUri(environment.MONGODB_URI)
+    : environment.MONGODB_URI || 'mongodb://localhost:27017/campusflow';
+  // Fail-closed test isolation: do not silently derive an unsafe test URI on port 27017 from development URI
+  const mongoTestUri = environment.MONGODB_TEST_URI || (
+    currentEnv === 'test'
+      ? ''
+      : deriveTestMongoUri(mongoUri)
+  );
+  const redisUrl = environment.REDIS_URL !== undefined
+    ? environment.REDIS_URL
+    : (currentEnv === 'production' ? '' : 'redis://localhost:6379');
+  const corsOrigin = environment.CORS_ORIGIN || 'http://localhost:3000';
+  const bcryptSaltRounds = parseNumber(environment.BCRYPT_SALT_ROUNDS, 12);
 
   // JWT secrets are required in production
   const jwtAccessSecret = currentEnv === 'production'
-    ? validateSecret(process.env.JWT_ACCESS_SECRET, 'JWT_ACCESS_SECRET', 32)
-    : process.env.JWT_ACCESS_SECRET || 'dev-access-secret-change-in-production-minimum-32-chars-long';
+    ? validateSecret(environment.JWT_ACCESS_SECRET, 'JWT_ACCESS_SECRET', 32)
+    : environment.JWT_ACCESS_SECRET || 'dev-access-secret-change-in-production-minimum-32-chars-long';
 
   const jwtRefreshSecret = currentEnv === 'production'
-    ? validateSecret(process.env.JWT_REFRESH_SECRET, 'JWT_REFRESH_SECRET', 32)
-    : process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-in-production-minimum-32-chars';
+    ? validateSecret(environment.JWT_REFRESH_SECRET, 'JWT_REFRESH_SECRET', 32)
+    : environment.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-in-production-minimum-32-chars';
+
+  // Backend Ingress / BFF shared proxy secrets
+  const proxySecret = currentEnv === 'production'
+    ? validateSecret(environment.PROXY_SECRET, 'PROXY_SECRET', 32)
+    : (environment.PROXY_SECRET || '');
+
+  const proxySecretFallback = (currentEnv === 'production' && environment.PROXY_SECRET_FALLBACK)
+    ? validateSecret(environment.PROXY_SECRET_FALLBACK, 'PROXY_SECRET_FALLBACK', 32)
+    : (environment.PROXY_SECRET_FALLBACK || '');
+
+  // Derived trusted browser origins for CSRF Origin checks
+  const baseOrigins = corsOrigin
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+  const defaultDevOrigins = currentEnv === 'development' ? ['http://localhost:3000'] : [];
+  const allowedBrowserOrigins = Array.from(new Set([...baseOrigins, ...defaultDevOrigins]));
 
   // Phase 3.3 Check-in & Auto-release configuration with bounds validation
   const checkinEarlyMinutes = parseBoundedNumber(
-    process.env.CHECKIN_EARLY_MINUTES,
+    environment.CHECKIN_EARLY_MINUTES,
     15,
     'CHECKIN_EARLY_MINUTES',
     1,
@@ -151,7 +204,7 @@ function parseEnv() {
   );
 
   const autoReleaseGraceMinutes = parseBoundedNumber(
-    process.env.AUTO_RELEASE_GRACE_MINUTES,
+    environment.AUTO_RELEASE_GRACE_MINUTES,
     15,
     'AUTO_RELEASE_GRACE_MINUTES',
     5,
@@ -159,7 +212,7 @@ function parseEnv() {
   );
 
   const noShowWindowDays = parseBoundedNumber(
-    process.env.NO_SHOW_WINDOW_DAYS,
+    environment.NO_SHOW_WINDOW_DAYS,
     30,
     'NO_SHOW_WINDOW_DAYS',
     7,
@@ -167,7 +220,7 @@ function parseEnv() {
   );
 
   const noShowStrikeThreshold = parseBoundedNumber(
-    process.env.NO_SHOW_STRIKE_THRESHOLD,
+    environment.NO_SHOW_STRIKE_THRESHOLD,
     3,
     'NO_SHOW_STRIKE_THRESHOLD',
     1,
@@ -175,7 +228,7 @@ function parseEnv() {
   );
 
   const noShowSuspensionDays = parseBoundedNumber(
-    process.env.NO_SHOW_SUSPENSION_DAYS,
+    environment.NO_SHOW_SUSPENSION_DAYS,
     14,
     'NO_SHOW_SUSPENSION_DAYS',
     1,
@@ -183,7 +236,7 @@ function parseEnv() {
   );
 
   const autoReleasePollIntervalMs = parseBoundedNumber(
-    process.env.AUTO_RELEASE_POLL_INTERVAL_MS,
+    environment.AUTO_RELEASE_POLL_INTERVAL_MS,
     60000,
     'AUTO_RELEASE_POLL_INTERVAL_MS',
     10000,
@@ -191,7 +244,7 @@ function parseEnv() {
   );
 
   const autoReleaseLookbackHours = parseBoundedNumber(
-    process.env.AUTO_RELEASE_LOOKBACK_HOURS,
+    environment.AUTO_RELEASE_LOOKBACK_HOURS,
     24,
     'AUTO_RELEASE_LOOKBACK_HOURS',
     1,
@@ -211,6 +264,9 @@ function parseEnv() {
     isProduction: currentEnv === 'production',
     isDevelopment: currentEnv === 'development',
     isTest: currentEnv === 'test',
+    PROXY_SECRET: proxySecret,
+    PROXY_SECRET_FALLBACK: proxySecretFallback,
+    ALLOWED_BROWSER_ORIGINS: allowedBrowserOrigins,
     CHECKIN_EARLY_MINUTES: checkinEarlyMinutes,
     AUTO_RELEASE_GRACE_MINUTES: autoReleaseGraceMinutes,
     NO_SHOW_WINDOW_DAYS: noShowWindowDays,

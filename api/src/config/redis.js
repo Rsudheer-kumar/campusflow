@@ -9,13 +9,14 @@ import { env } from './env.js';
 import { logger } from '../utils/logger.js';
 
 let redisClient = null;
-let isConnecting = false;
+let connectingPromise = null;
 let lastRedisError = null;
 
 /**
  * Sanitizes Redis URL by redacting password/credentials if present.
  */
 export function redactRedisUrl(url) {
+  if (!url || typeof url !== 'string') return '';
   return url.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@')
             .replace(/\/\/:([^@]+)@/, '//:****@');
 }
@@ -29,7 +30,13 @@ export function getLastRedisError() {
 }
 
 export async function connectRedis(urlOverride) {
-  const targetUrl = urlOverride || env.REDIS_URL;
+  const targetUrl = urlOverride !== undefined ? urlOverride : env.REDIS_URL;
+
+  // If Redis is unconfigured or disabled, skip connection attempt gracefully
+  if (!targetUrl) {
+    logger.info('Redis URL not configured — running in documented degraded in-memory mode');
+    return null;
+  }
 
   // If already connected and ready, return existing client
   if (redisClient && redisClient.isReady) {
@@ -37,97 +44,116 @@ export async function connectRedis(urlOverride) {
     return redisClient;
   }
 
-  // Prevent duplicate concurrent connection attempts
-  if (isConnecting) {
-    logger.debug('Redis connection attempt already in progress');
-    return redisClient;
+  // Prevent duplicate concurrent connection attempts by returning in-flight promise
+  if (connectingPromise) {
+    logger.debug('Redis connection attempt already in progress, awaiting existing promise');
+    return connectingPromise;
   }
 
-  isConnecting = true;
+  connectingPromise = (async () => {
+    try {
+      if (!redisClient || urlOverride) {
+        // If client exists but we are switching target URL, close previous
+        if (redisClient && redisClient.isOpen) {
+          try {
+            await redisClient.destroy();
+          } catch {
+            // ignore cleanup error
+          }
+        }
 
-  try {
-    if (!redisClient || urlOverride) {
-      // If client exists but we are switching target URL, close previous
-      if (redisClient && redisClient.isOpen) {
+        redisClient = createClient({
+          url: targetUrl,
+          socket: {
+            connectTimeout: 2000,
+            reconnectStrategy: (retries) => {
+              // Bounded retry to avoid infinite reconnect loops and log spam
+              if (env.isTest || retries >= 1) {
+                lastRedisError = 'Redis service unreachable';
+                return new Error('Redis service unreachable');
+              }
+              return Math.min(retries * 500, 1000);
+            },
+          },
+        });
+
+        redisClient.on('error', (err) => {
+          lastRedisError = err.message;
+          // Only log unexpected runtime error if client was active
+          if (redisClient?.isReady) {
+            logger.error('Redis client runtime error', err.message);
+          }
+        });
+
+        redisClient.on('connect', () => {
+          logger.debug('Redis socket connecting...');
+        });
+
+        redisClient.on('ready', () => {
+          lastRedisError = null;
+          logger.info('Redis client connected and ready');
+        });
+
+        redisClient.on('reconnecting', () => {
+          logger.debug('Redis client reconnecting...');
+        });
+
+        redisClient.on('end', () => {
+          logger.debug('Redis client connection closed');
+        });
+      }
+
+      logger.debug('Connecting to Redis...', { url: redactRedisUrl(targetUrl) });
+      await redisClient.connect();
+      lastRedisError = null;
+      return redisClient;
+    } catch (error) {
+      lastRedisError = error instanceof Error ? error.message : String(error);
+      if (redisClient) {
         try {
-          await redisClient.destroy();
+          redisClient.destroy();
         } catch {
           // ignore cleanup error
         }
       }
-
-      redisClient = createClient({
-        url: targetUrl,
-        socket: {
-          connectTimeout: 2000,
-          reconnectStrategy: (retries) => {
-            // Bounded retry to avoid infinite reconnect loops and log spam
-            if (env.isTest || retries >= 1) {
-              lastRedisError = 'Redis service unreachable';
-              return new Error('Redis service unreachable');
-            }
-            return Math.min(retries * 500, 1000);
-          },
-        },
-      });
-
-      redisClient.on('error', (err) => {
-        lastRedisError = err.message;
-        // Only log unexpected runtime error if client was active
-        if (redisClient?.isReady) {
-          logger.error('Redis client runtime error', err.message);
-        }
-      });
-
-      redisClient.on('connect', () => {
-        logger.debug('Redis socket connecting...');
-      });
-
-      redisClient.on('ready', () => {
-        lastRedisError = null;
-        logger.info('Redis client connected and ready');
-      });
-
-      redisClient.on('reconnecting', () => {
-        logger.debug('Redis client reconnecting...');
-      });
-
-      redisClient.on('end', () => {
-        logger.debug('Redis client connection closed');
-      });
+      throw error;
+    } finally {
+      connectingPromise = null;
     }
+  })();
 
-    logger.debug('Connecting to Redis...', { url: redactRedisUrl(targetUrl) });
-    await redisClient.connect();
-    lastRedisError = null;
-    return redisClient;
-  } catch (error) {
-    lastRedisError = error instanceof Error ? error.message : String(error);
-    throw error;
-  } finally {
-    isConnecting = false;
-  }
+  return connectingPromise;
 }
 
 export async function disconnectRedis() {
+  connectingPromise = null;
+  const clientToClose = redisClient;
+  redisClient = null;
+  lastRedisError = null;
+
   try {
-    if (redisClient && redisClient.isOpen) {
-      await redisClient.quit();
+    if (clientToClose && clientToClose.isReady) {
+      await clientToClose.quit();
       logger.debug('Redis client disconnected cleanly');
-    } else if (redisClient) {
-      await redisClient.destroy();
+    } else if (clientToClose) {
+      clientToClose.destroy();
     }
   } catch {
-    if (redisClient) {
+    if (clientToClose) {
       try {
-        await redisClient.destroy();
+        clientToClose.destroy();
       } catch {
-        // ignore
+        // ignore cleanup error
       }
     }
   } finally {
-    redisClient = null;
-    lastRedisError = null;
+    if (clientToClose) {
+      try {
+        clientToClose.removeAllListeners();
+      } catch {
+        // ignore listener cleanup error
+      }
+    }
   }
 }
 

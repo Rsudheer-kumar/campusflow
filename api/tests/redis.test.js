@@ -49,6 +49,17 @@ describe('Redis Configuration & Lifecycle Smoke Tests', () => {
         await disconnectRedis();
         assert.strictEqual(getRedisState(), 'disconnected');
     });
+    it('connectRedis with unconfigured/empty URL should return null and remain disconnected without error', async () => {
+        // Ensure clean state
+        await disconnectRedis();
+
+        // Connect with empty URL (simulating unconfigured production/staging environment)
+        const result = await connectRedis('');
+        assert.strictEqual(result, null);
+        assert.strictEqual(isRedisConnected(), false);
+        assert.strictEqual(getRedisState(), 'disconnected');
+        assert.strictEqual(getLastRedisError(), null);
+    });
     it('connectRedis with configured REDIS_URL should handle real local environment truthfully', async () => {
         try {
             const client = await connectRedis(env.REDIS_URL);
