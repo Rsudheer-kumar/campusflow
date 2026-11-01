@@ -174,7 +174,11 @@ export function StudentDashboard({ dashboard }) {
                             }
                             dot
                           >
-                            {b.status}
+                            {b.status === "PENDING"
+                              ? "PENDING APPROVAL"
+                              : b.status === "CONFIRMED"
+                              ? "APPROVED"
+                              : b.status}
                           </Badge>
                           <Link href={`/dashboard/calendar?resourceId=${resObj?._id || b.resource}`}>
                             <Button size="xs" variant="secondary">
@@ -292,7 +296,11 @@ export function StudentDashboard({ dashboard }) {
                             }
                             dot
                           >
-                            {b.status}
+                            {b.status === "PENDING"
+                              ? "PENDING APPROVAL"
+                              : b.status === "CONFIRMED"
+                              ? "APPROVED"
+                              : b.status}
                           </Badge>
                           <Link href={`/dashboard/calendar?resourceId=${resObj?._id || b.resource}`}>
                             <Button size="xs" variant="secondary">

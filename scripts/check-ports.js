@@ -133,18 +133,56 @@ async function checkMongoTcpReachable(host, port) {
 
 async function getMongoReadiness(config) {
   let MongoClient;
-  try {
-    ({ MongoClient } = require(path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongodb')));
-  } catch (error) {
+  const mongoPaths = [
+    path.join(PROJECT_ROOT, 'backend', 'node_modules', 'mongodb'),
+    path.join(PROJECT_ROOT, 'node_modules', 'mongodb'),
+    path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongodb'),
+  ];
+
+  for (const p of mongoPaths) {
     try {
-      const mongoose = require(path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongoose'));
-      MongoClient = mongoose.mongo.MongoClient;
-    } catch {
-      return {
-        ready: false,
-        reason: `MongoDB driver is unavailable: ${error instanceof Error ? error.message : String(error)}`,
-      };
+      ({ MongoClient } = require(p));
+      if (MongoClient) break;
+    } catch {}
+  }
+
+  if (!MongoClient) {
+    try {
+      ({ MongoClient } = require('mongodb'));
+    } catch {}
+  }
+
+  if (!MongoClient) {
+    const mongoosePaths = [
+      path.join(PROJECT_ROOT, 'backend', 'node_modules', 'mongoose'),
+      path.join(PROJECT_ROOT, 'node_modules', 'mongoose'),
+      path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongoose'),
+    ];
+    for (const p of mongoosePaths) {
+      try {
+        const mongoose = require(p);
+        if (mongoose && mongoose.mongo && mongoose.mongo.MongoClient) {
+          MongoClient = mongoose.mongo.MongoClient;
+          break;
+        }
+      } catch {}
     }
+  }
+
+  if (!MongoClient) {
+    try {
+      const mongoose = require('mongoose');
+      if (mongoose && mongoose.mongo && mongoose.mongo.MongoClient) {
+        MongoClient = mongoose.mongo.MongoClient;
+      }
+    } catch {}
+  }
+
+  if (!MongoClient) {
+    return {
+      ready: false,
+      reason: 'MongoDB driver is unavailable: neither mongodb nor mongoose could be loaded from backend/node_modules',
+    };
   }
 
   const client = new MongoClient(config.uri, {
@@ -367,7 +405,30 @@ async function checkPortAvailable(port) {
   return { available: free, proc: null };
 }
 
+function ensureFrontendPublicAssets() {
+  const frontendPublic = path.join(PROJECT_ROOT, 'frontend', 'public');
+  const webPublic = path.join(PROJECT_ROOT, 'web', 'public');
+  if (fs.existsSync(webPublic)) {
+    if (!fs.existsSync(frontendPublic)) {
+      fs.cpSync(webPublic, frontendPublic, { recursive: true });
+    } else {
+      const frontendModels = path.join(frontendPublic, 'models');
+      const webModels = path.join(webPublic, 'models');
+      if (!fs.existsSync(frontendModels) && fs.existsSync(webModels)) {
+        fs.cpSync(webModels, frontendModels, { recursive: true });
+      }
+    }
+  }
+}
+
 async function main() {
+  ensureFrontendPublicAssets();
+
+  if (getEnv('SKIP_PREFLIGHT') === 'true' || process.env.SKIP_PREFLIGHT === 'true') {
+    console.log('[CampusFlow Preflight] Skipping preflight check (SKIP_PREFLIGHT is enabled).');
+    return;
+  }
+
   const conflicts = [];
 
   for (const { port, name } of PORTS_TO_CHECK) {

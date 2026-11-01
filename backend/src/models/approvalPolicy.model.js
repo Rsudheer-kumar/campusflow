@@ -19,12 +19,14 @@ export const ApprovalScopeType = Object.freeze({
 });
 
 export const ApproverRole = Object.freeze({
+  FACULTY: UserRole.FACULTY,
   DEPARTMENT_HEAD: UserRole.DEPARTMENT_HEAD,
   FACILITY_MANAGER: UserRole.FACILITY_MANAGER,
   ADMIN: UserRole.ADMIN,
 });
 
 export const VALID_APPROVER_ROLES = Object.freeze([
+  ApproverRole.FACULTY,
   ApproverRole.DEPARTMENT_HEAD,
   ApproverRole.FACILITY_MANAGER,
   ApproverRole.ADMIN,
@@ -41,7 +43,7 @@ const ApprovalChainStepSchema = new Schema(
       type: String,
       enum: {
         values: VALID_APPROVER_ROLES,
-        message: 'Invalid approver role: {VALUE}. Allowed: DEPARTMENT_HEAD, FACILITY_MANAGER, ADMIN',
+        message: 'Invalid approver role: {VALUE}. Allowed: FACULTY, DEPARTMENT_HEAD, FACILITY_MANAGER, ADMIN',
       },
       required: true,
     },

@@ -265,7 +265,7 @@ async function seedDatabase() {
             windows,
             bookingPolicy: {
               minDurationMinutes: 30,
-              maxDurationMinutes: 240,
+              maxDurationMinutes: 720,
               minLeadTimeMinutes: 0,
               maxAdvanceBookingDays: 60,
             },

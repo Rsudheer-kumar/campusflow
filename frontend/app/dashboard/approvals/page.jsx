@@ -493,7 +493,7 @@ function ApprovalsQueueContent() {
 export default function ApprovalsPage() {
   return (
     <ProtectedRoute
-      requiredRoles={["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD"]}
+      requiredRoles={["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD", "FACULTY"]}
     >
       <ApprovalsQueueContent />
     </ProtectedRoute>

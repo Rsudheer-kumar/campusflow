@@ -7,6 +7,7 @@ import { Types } from 'mongoose';
 import {
   ApprovalPolicy,
   ApprovalScopeType,
+  ApproverRole,
 } from '../models/approvalPolicy.model.js';
 import { Resource } from '../models/resource.model.js';
 import { ResourceType } from '../models/resourceType.model.js';
@@ -312,8 +313,27 @@ export class ApprovalPolicyService {
   /**
    * Resolves the authoritative winning policy across the locked 5-tier precedence hierarchy.
    */
-  static resolvePrecedence(candidates) {
+  static resolvePrecedence(candidates, userRoles = []) {
+    const isStudent = Array.isArray(userRoles) && userRoles.includes(UserRole.STUDENT);
+
     if (!candidates || candidates.length === 0) {
+      if (isStudent) {
+        // MANDATORY STUDENT RESERVATION APPROVAL WORKFLOW:
+        // Student reservations must NEVER be automatically approved.
+        return {
+          policyId: null,
+          name: 'Mandatory Student Faculty Approval Policy',
+          requiresApproval: true,
+          approvalChain: [
+            {
+              stepOrder: 1,
+              approverRole: ApproverRole.FACULTY,
+              timeoutHours: 48,
+            },
+          ],
+        };
+      }
+
       // Tier 5: Default Fallback -> Auto-confirm
       return {
         requiresApproval: false,
@@ -370,6 +390,23 @@ export class ApprovalPolicyService {
 
     const winner = scored[0].policy;
 
+    // MANDATORY STUDENT POLICY CHECK:
+    // Student reservations must NEVER be automatically approved, even if a generic policy specifies requiresApproval: false
+    if (isStudent && !winner.requiresApproval) {
+      return {
+        policyId: winner._id,
+        name: winner.name,
+        requiresApproval: true,
+        approvalChain: [
+          {
+            stepOrder: 1,
+            approverRole: ApproverRole.FACULTY,
+            timeoutHours: 48,
+          },
+        ],
+      };
+    }
+
     return {
       policyId: winner._id,
       name: winner.name,
@@ -383,6 +420,6 @@ export class ApprovalPolicyService {
    */
   static async evaluatePolicyForBooking(params) {
     const candidates = await this.findMatchingPolicies(params);
-    return this.resolvePrecedence(candidates);
+    return this.resolvePrecedence(candidates, params.userRoles || []);
   }
 }

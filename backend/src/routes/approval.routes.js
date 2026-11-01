@@ -15,7 +15,7 @@ const router = Router();
 router.get(
   '/pending',
   authenticate,
-  requireRoles(UserRole.DEPARTMENT_HEAD, UserRole.FACILITY_MANAGER, UserRole.ADMIN),
+  requireRoles(UserRole.DEPARTMENT_HEAD, UserRole.FACILITY_MANAGER, UserRole.ADMIN, UserRole.FACULTY),
   validateRequest({ query: validatePendingApprovalsQuery }),
   getPendingApprovals
 );

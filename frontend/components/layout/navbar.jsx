@@ -23,15 +23,15 @@ export function Navbar({ onOpenMobileMenu, className, ...props }) {
 
       {/* Right side actions */}
       <div className="ml-auto flex items-center gap-2 sm:gap-4">
-        {/* Notifications (visibly non-interactive; notification service pending future milestone) */}
-        <div
-          className="flex h-9 w-9 items-center justify-center rounded-full text-muted/40 cursor-default select-none"
-          title="No unread notifications"
-          aria-label="Notifications (No unread notifications)"
-          role="status"
+        {/* Notifications Alert Bell */}
+        <Link
+          href="/dashboard/approvals"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:text-foreground hover:bg-white/[0.06] transition-colors"
+          title="Review Approval Requests"
+          aria-label="Review Approval Requests"
         >
           <Bell className="h-4 w-4" aria-hidden="true" />
-        </div>
+        </Link>
 
         <div className="mx-1 h-5 w-px bg-border" aria-hidden="true"/>
 

@@ -51,7 +51,7 @@ export const mainNavItems = [
     label: "Approvals Queue",
     href: "/dashboard/approvals",
     icon: <ClipboardList className="h-4 w-4" />,
-    roles: ["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD"],
+    roles: ["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD", "FACULTY"],
   },
   {
     label: "Approval Policies",

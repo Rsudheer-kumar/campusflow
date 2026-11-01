@@ -279,10 +279,10 @@ export default function BookingsPage() {
                         }
                         dot
                       >
-                        {booking.status === "PENDING" &&
-                        booking.currentStepOrder &&
-                        booking.approvalChain?.length
-                          ? `PENDING (Step ${booking.currentStepOrder}/${booking.approvalChain.length}: ${booking.currentApproverRole || "APPROVAL"})`
+                        {booking.status === "PENDING"
+                          ? `PENDING APPROVAL (Step ${booking.currentStepOrder || 1}/${booking.approvalChain?.length || 1}: ${booking.currentApproverRole || "FACULTY"})`
+                          : booking.status === "CONFIRMED"
+                          ? "APPROVED"
                           : booking.status === "NO_SHOW" && booking.noShowPardoned
                           ? "NO_SHOW (Pardoned)"
                           : booking.status}
@@ -377,6 +377,14 @@ export default function BookingsPage() {
                         <span>{intervalStr}</span>
                       </div>
                     </div>
+
+                    {/* Rejection reason if present */}
+                    {booking.status === "REJECTED" && (booking.rejectionReason || booking.approvalChain?.find((s) => s.status === "REJECTED")?.comment) && (
+                      <p className="text-xs text-danger font-medium pt-1 flex items-center gap-1.5">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        <span>Rejection Reason: {booking.rejectionReason || booking.approvalChain?.find((s) => s.status === "REJECTED")?.comment}</span>
+                      </p>
+                    )}
 
                     {/* Cancellation reason if present */}
                     {booking.cancellationReason && (

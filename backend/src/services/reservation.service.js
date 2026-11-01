@@ -22,6 +22,7 @@ import {
 import { AvailabilityService } from './availability.service.js';
 import { QuotaService } from './quota.service.js';
 import { ApprovalPolicyService } from './approvalPolicy.service.js';
+import { NotificationService } from './notification.service.js';
 import {
   AppError,
   BadRequestError,
@@ -130,6 +131,8 @@ export class ReservationService {
       const session = await mongoose.startSession();
       try {
         let createdDoc = null;
+        let studentUser = null;
+        let resourceDoc = null;
 
         await session.withTransaction(async () => {
         // Step A: Acquire write lock on Resource by incrementing version
@@ -143,6 +146,7 @@ export class ReservationService {
         if (!resource) {
           throw new NotFoundError('Resource not found');
         }
+        resourceDoc = resource;
 
         if (!resource.isActive || resource.status !== ResourceStatus.ACTIVE) {
           throw new BadRequestError(`Resource is currently ${resource.status || 'INACTIVE'} and unavailable for bookings`);
@@ -153,6 +157,7 @@ export class ReservationService {
         if (!user) {
           throw new NotFoundError('User not found');
         }
+        studentUser = user;
 
         if (!user.isActive) {
           throw new BadRequestError('User account is currently inactive and cannot make reservations');
@@ -240,6 +245,18 @@ export class ReservationService {
           session,
         });
 
+        const isStudent = user.roles.includes(UserRole.STUDENT);
+        if (isStudent && (!policyResult.requiresApproval || !policyResult.approvalChain || policyResult.approvalChain.length === 0)) {
+          policyResult.requiresApproval = true;
+          policyResult.approvalChain = [
+            {
+              stepOrder: 1,
+              approverRole: ApproverRole.FACULTY,
+              timeoutHours: 48,
+            },
+          ];
+        }
+
         let initialStatus = ReservationStatus.CONFIRMED;
         let policyId = null;
         let currentStepOrder = null;
@@ -298,6 +315,16 @@ export class ReservationService {
 
         if (!createdDoc) {
           throw new BadRequestError('Failed to create reservation within transaction');
+        }
+
+        if (createdDoc && createdDoc.status === ReservationStatus.PENDING) {
+          NotificationService.notifyFacultyOfPendingReservation({
+            reservation: createdDoc,
+            studentUser,
+            resource: resourceDoc,
+          }).catch((err) => {
+            logger.error(`Failed to dispatch faculty notification: ${err.message}`);
+          });
         }
 
         return createdDoc;
@@ -424,9 +451,9 @@ export class ReservationService {
         const holdsStepRole = user.roles.includes(activeStep.approverRole);
 
         let isCrossDept = false;
-        if (activeStep.approverRole === ApproverRole.DEPARTMENT_HEAD) {
+        if (activeStep.approverRole === ApproverRole.DEPARTMENT_HEAD || activeStep.approverRole === ApproverRole.FACULTY) {
           const requester = await User.findById(reservation.user).select('department').session(session).lean();
-          if (requester?.department !== user.department) {
+          if (user.department && requester?.department && requester.department !== user.department) {
             isCrossDept = true;
           }
         }
@@ -452,7 +479,9 @@ export class ReservationService {
         } else {
           if (isCrossDept) {
             throw new ForbiddenError(
-              'Department Heads can only approve reservations within their department'
+              activeStep.approverRole === ApproverRole.FACULTY
+                ? 'Faculty members can only approve reservations within their department'
+                : 'Department Heads can only approve reservations within their department'
             );
           }
           throw new ForbiddenError(
@@ -505,6 +534,22 @@ export class ReservationService {
           updateSet.currentApproverRole = nextApproverRole;
           updateSet.activeStepDeadline = nextStepDeadline;
         } else {
+          // Recheck resource availability and timetable conflicts during final approval
+          const availability = await AvailabilityService.checkAvailability({
+            resourceId: reservation.resource,
+            startAt: reservation.startAt,
+            endAt: reservation.endAt,
+            excludeReservationId: reservation._id,
+            session,
+          });
+
+          if (!availability.available) {
+            throw new ConflictError(
+              availability.message || 'Cannot approve reservation: resource is no longer available or conflicts with an existing reservation or timetable',
+              availability.details
+            );
+          }
+
           // Final step -> CONFIRMED
           updateSet.status = ReservationStatus.CONFIRMED;
           updateSet.approvedBy = new Types.ObjectId(user.id);
@@ -531,6 +576,17 @@ export class ReservationService {
 
         committedDoc = updated;
       });
+
+      if (committedDoc && committedDoc.status === ReservationStatus.CONFIRMED) {
+        NotificationService.notifyStudentOfDecision({
+          reservation: committedDoc,
+          decision: 'APPROVED',
+          actorUser: user,
+          comment,
+        }).catch((err) => {
+          logger.error(`Failed to dispatch student approval notification: ${err.message}`);
+        });
+      }
 
       return committedDoc;
     } finally {
@@ -602,9 +658,9 @@ export class ReservationService {
         const holdsStepRole = user.roles.includes(activeStep.approverRole);
 
         let isCrossDept = false;
-        if (activeStep.approverRole === ApproverRole.DEPARTMENT_HEAD) {
+        if (activeStep.approverRole === ApproverRole.DEPARTMENT_HEAD || activeStep.approverRole === ApproverRole.FACULTY) {
           const requester = await User.findById(reservation.user).select('department').session(session).lean();
-          if (requester?.department !== user.department) {
+          if (user.department && requester?.department && requester.department !== user.department) {
             isCrossDept = true;
           }
         }
@@ -621,7 +677,9 @@ export class ReservationService {
         } else {
           if (isCrossDept) {
             throw new ForbiddenError(
-              'Department Heads can only reject reservations within their department'
+              activeStep.approverRole === ApproverRole.FACULTY
+                ? 'Faculty members can only reject reservations within their department'
+                : 'Department Heads can only reject reservations within their department'
             );
           }
           throw new ForbiddenError(
@@ -671,6 +729,17 @@ export class ReservationService {
 
         committedDoc = updated;
       });
+
+      if (committedDoc && committedDoc.status === ReservationStatus.REJECTED) {
+        NotificationService.notifyStudentOfDecision({
+          reservation: committedDoc,
+          decision: 'REJECTED',
+          actorUser: user,
+          comment: reason,
+        }).catch((err) => {
+          logger.error(`Failed to dispatch student rejection notification: ${err.message}`);
+        });
+      }
 
       return committedDoc;
     } finally {

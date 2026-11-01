@@ -15,6 +15,7 @@ import {
   FlaskConical,
   GraduationCap,
   AlertCircle,
+  ClipboardCheck,
 } from "lucide-react";
 import { Card, Badge, Button, Skeleton } from "@/components/ui";
 import { MetricCard } from "./metric-card";
@@ -426,6 +427,26 @@ export function FacultyDashboard({ dashboard }) {
                     </div>
                     <div className="text-[11px] text-muted">
                       Reserve specialized workstation spaces
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+              </Link>
+
+              <Link
+                href="/dashboard/approvals"
+                className="p-3 rounded-xl bg-surface-2/50 hover:bg-surface-2 border border-border/60 hover:border-amber-500/30 transition-all flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <ClipboardCheck className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs sm:text-sm font-medium text-foreground group-hover:text-amber-400 transition-colors">
+                      Pending Approvals
+                    </div>
+                    <div className="text-[11px] text-muted">
+                      Review student reservation requests
                     </div>
                   </div>
                 </div>

@@ -13,6 +13,7 @@ import resourceRoutes from './resource.routes.js';
 import approvalRoutes from './approval.routes.js';
 import approvalPolicyRoutes from './approvalPolicy.routes.js';
 import analyticsRoutes from './analytics.routes.js';
+import notificationRoutes from './notification.routes.js';
 import {
   availabilityRuleRouter,
   blackoutRouter,
@@ -53,5 +54,8 @@ router.use('/approval-policies', approvalPolicyRoutes);
 
 // Institutional analytics endpoints: /api/analytics (Phase 3.5)
 router.use('/analytics', analyticsRoutes);
+
+// Notification endpoints: /api/notifications (Phase 2A)
+router.use('/notifications', notificationRoutes);
 
 export default router;

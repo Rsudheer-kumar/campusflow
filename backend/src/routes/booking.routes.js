@@ -151,7 +151,7 @@ router.post(
 router.post(
   '/:id/approve',
   authenticate,
-  requireRoles(UserRole.DEPARTMENT_HEAD, UserRole.FACILITY_MANAGER, UserRole.ADMIN),
+  requireRoles(UserRole.DEPARTMENT_HEAD, UserRole.FACILITY_MANAGER, UserRole.ADMIN, UserRole.FACULTY),
   validateRequest({
     params: validateMongoId('id'),
     body: validateApproveBookingBody,
@@ -162,7 +162,7 @@ router.post(
 router.post(
   '/:id/reject',
   authenticate,
-  requireRoles(UserRole.DEPARTMENT_HEAD, UserRole.FACILITY_MANAGER, UserRole.ADMIN),
+  requireRoles(UserRole.DEPARTMENT_HEAD, UserRole.FACILITY_MANAGER, UserRole.ADMIN, UserRole.FACULTY),
   validateRequest({
     params: validateMongoId('id'),
     body: validateRejectBookingBody,

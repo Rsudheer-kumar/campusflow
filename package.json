@@ -6,6 +6,7 @@
   "scripts": {
     "predev": "node scripts/check-ports.js && npm run ensure:demo-users",
     "dev": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"blue.bold,magenta.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:quick": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"blue.bold,magenta.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "npm run --prefix backend dev",
     "dev:frontend": "npm run --prefix frontend dev",
     "ensure:demo-users": "npm run --prefix backend ensure:demo-users",

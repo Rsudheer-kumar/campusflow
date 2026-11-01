@@ -83,7 +83,17 @@ export async function createBooking(req, res, next) {
       metadata: req.body.metadata,
     });
 
-    sendSuccess(res, reservation, 201);
+    const isPending = reservation.status === 'PENDING';
+    const message = isPending
+      ? 'Your reservation request has been submitted successfully and is awaiting faculty approval.'
+      : 'Reservation confirmed successfully.';
+
+    const responsePayload = {
+      ...(typeof reservation.toObject === 'function' ? reservation.toObject() : reservation),
+      message,
+    };
+
+    sendSuccess(res, responsePayload, 201);
   } catch (error) {
     next(error);
   }

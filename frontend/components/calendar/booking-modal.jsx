@@ -4,7 +4,7 @@ import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Clock, Building2, ShieldCheck } from "lucide-react";
+import { AlertCircle, Clock, Building2, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { resolveReservationTimezone } from "@/lib/utils";
 function getInitialValues(initialStartAt, initialEndAt) {
@@ -45,8 +45,10 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
     const [endTime, setEndTime] = useState(initial.endTime);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [conflictError, setConflictError] = useState(null);
+    const [pendingSuccessMessage, setPendingSuccessMessage] = useState(null);
     const handleClose = () => {
         setConflictError(null);
+        setPendingSuccessMessage(null);
         onClose();
     };
     const handleSubmit = async (e) => {
@@ -87,8 +89,20 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
                 endAt: endAtDate.toISOString(),
                 timezone: resolveReservationTimezone(resource),
             });
-            onSuccess(res.booking);
-            handleClose();
+            const booking = res?.booking || res;
+            const isPending = booking?.status === "PENDING";
+            if (isPending) {
+                setPendingSuccessMessage(
+                    booking?.message || res?.message || "Your reservation request has been submitted successfully and is awaiting faculty approval."
+                );
+                onSuccess(booking);
+                setTimeout(() => {
+                    handleClose();
+                }, 3000);
+            } else {
+                onSuccess(booking);
+                handleClose();
+            }
         }
         catch (err) {
             if (err instanceof ApiError) {
@@ -136,6 +150,21 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
             : "Reserve campus facility"} size="lg">
       <form onSubmit={handleSubmit} className="flex flex-col">
         <div className="space-y-4">
+          {/* Pending Approval Success Notification */}
+          {pendingSuccessMessage && (
+            <div className="p-4 rounded-[var(--radius-md)] bg-primary/10 border border-primary/30 text-foreground flex items-start gap-3 animate-fade-in">
+              <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5 text-primary" />
+              <div className="space-y-1">
+                <p className="font-semibold text-sm leading-tight text-primary-bright">
+                  Request Submitted Successfully
+                </p>
+                <p className="text-xs leading-relaxed opacity-95">
+                  {pendingSuccessMessage}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Timetable or General Conflict Error Banner */}
           {conflictError && (<div className={`p-3.5 rounded-[var(--radius-md)] border text-sm flex items-start gap-3 animate-fade-in ${conflictError.isTimetable
                 ? "bg-danger/10 border-danger/40 text-danger"
@@ -199,12 +228,20 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
 
         {/* Modal Actions - Pinned and clearly visible */}
         <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 pt-4 mt-4 border-t border-border/60 bg-surface-elevated/95 backdrop-blur-xs">
-          <Button type="button" variant="ghost" onClick={handleClose} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" disabled={isSubmitting || !title.trim() || !resource}>
-            {isSubmitting ? "Verifying & Reserving..." : "Confirm Reservation"}
-          </Button>
+          {pendingSuccessMessage ? (
+            <Button type="button" variant="primary" onClick={handleClose}>
+              Done
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="ghost" onClick={handleClose} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={isSubmitting || !title.trim() || !resource}>
+                {isSubmitting ? "Verifying & Reserving..." : "Confirm Reservation"}
+              </Button>
+            </>
+          )}
         </div>
       </form>
     </Modal>);

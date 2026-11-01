@@ -22,6 +22,7 @@ export class ApprovalQueueService {
     const isAdmin = user.roles.includes(UserRole.ADMIN);
     const isFacilityManager = user.roles.includes(UserRole.FACILITY_MANAGER);
     const isDeptHead = user.roles.includes(UserRole.DEPARTMENT_HEAD);
+    const isFaculty = user.roles.includes(UserRole.FACULTY);
 
     // Build role & department matching branches
     const roleBranches = [];
@@ -39,6 +40,23 @@ export class ApprovalQueueService {
         currentApproverRole: ApproverRole.DEPARTMENT_HEAD,
         'requester.department': user.department,
       });
+    }
+
+    if (isFaculty) {
+      if (user.department) {
+        roleBranches.push({
+          currentApproverRole: ApproverRole.FACULTY,
+          $or: [
+            { 'requester.department': user.department },
+            { 'requester.department': null },
+            { 'requester.department': { $exists: false } },
+          ],
+        });
+      } else {
+        roleBranches.push({
+          currentApproverRole: ApproverRole.FACULTY,
+        });
+      }
     }
 
     // If user has none of these roles, queue is empty
@@ -175,6 +193,13 @@ export class ApprovalQueueService {
                   location: '$resourceDoc.location',
                 },
                 user: {
+                  _id: '$requester._id',
+                  name: '$requester.name',
+                  email: '$requester.email',
+                  department: '$requester.department',
+                  identifier: '$requester.identifier',
+                },
+                requester: {
                   _id: '$requester._id',
                   name: '$requester.name',
                   email: '$requester.email',

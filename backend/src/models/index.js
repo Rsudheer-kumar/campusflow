@@ -96,3 +96,11 @@ export {
   TimetableEntry,
   TimetableEntrySchema,
 } from './timetableEntry.model.js';
+
+// Notification (Phase 2A)
+export {
+  Notification,
+  NotificationType,
+  NotificationStatus,
+  NotificationChannel,
+} from './notification.model.js';

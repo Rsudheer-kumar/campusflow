@@ -607,4 +607,24 @@ export const api = {
             });
         },
     },
+    notifications: {
+        list: async (params = {}) => {
+            const searchParams = new URLSearchParams();
+            if (params.page) searchParams.set("page", String(params.page));
+            if (params.limit) searchParams.set("limit", String(params.limit));
+            if (params.unreadOnly !== undefined) searchParams.set("unreadOnly", String(params.unreadOnly));
+            const query = searchParams.toString();
+            return request(`/notifications${query ? `?${query}` : ""}`);
+        },
+        markRead: async (id) => {
+            return request(`/notifications/${id}/read`, {
+                method: "PATCH",
+            });
+        },
+        markAllRead: async () => {
+            return request("/notifications/read-all", {
+                method: "POST",
+            });
+        },
+    },
 };
