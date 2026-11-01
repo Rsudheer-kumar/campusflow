@@ -23,6 +23,7 @@ import { AvailabilityService } from './availability.service.js';
 import { QuotaService } from './quota.service.js';
 import { ApprovalPolicyService } from './approvalPolicy.service.js';
 import { NotificationService } from './notification.service.js';
+import { logger } from '../utils/logger.js';
 import {
   AppError,
   BadRequestError,
