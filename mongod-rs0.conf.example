@@ -1,0 +1,22 @@
+# ============================================================
+# CampusFlow — Local MongoDB Replica Set Configuration Example
+# Copy this file to mongod-rs0.conf and adjust paths for your local system.
+# Note: mongod-rs0.conf is gitignored to protect machine-specific paths.
+# ============================================================
+
+storage:
+  # Absolute path to your local mongodb-data directory
+  dbPath: C:\path\to\campus-booking-platform\mongodb-data
+
+systemLog:
+  destination: file
+  logAppend: true
+  # Absolute path to your local mongod.log file
+  path: C:\path\to\campus-booking-platform\mongodb-data\mongod.log
+
+net:
+  port: 27018
+  bindIp: 127.0.0.1
+
+replication:
+  replSetName: rs0

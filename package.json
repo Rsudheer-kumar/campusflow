@@ -1,0 +1,23 @@
+{
+  "name": "campusflow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CampusFlow - Academic Timetable & Resource Management Platform",
+  "scripts": {
+    "predev": "node scripts/check-ports.js && npm run ensure:demo-users",
+    "dev": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"blue.bold,magenta.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run --prefix backend dev",
+    "dev:frontend": "npm run --prefix frontend dev",
+    "ensure:demo-users": "npm run --prefix backend ensure:demo-users",
+    "build:backend": "npm run --prefix backend build",
+    "build:frontend": "npm run --prefix frontend build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "test": "npm run --prefix backend test",
+    "lint": "npm run --prefix backend lint && npm run --prefix frontend lint",
+    "check:javascript": "node scripts/check-javascript.js",
+    "verify": "npm run check:javascript && npm run lint && npm run build:frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
