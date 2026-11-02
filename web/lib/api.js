@@ -39,13 +39,54 @@ export function setStoredAccessToken(token) {
 }
 // ─── HTTP Core Transport ───────────────────────────────────────────────────────
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+
+let activeRefreshPromise = null;
+
+async function executeTokenRefresh() {
+    if (activeRefreshPromise) {
+        return activeRefreshPromise;
+    }
+    activeRefreshPromise = (async () => {
+        try {
+            const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
+                method: "POST",
+                credentials: "include",
+            });
+            if (refreshRes.ok) {
+                const refreshData = await refreshRes.json();
+                if (refreshData?.data?.accessToken) {
+                    setStoredAccessToken(refreshData.data.accessToken);
+                    return refreshData.data;
+                }
+            }
+            setStoredAccessToken(null);
+            return null;
+        } catch {
+            setStoredAccessToken(null);
+            return null;
+        } finally {
+            activeRefreshPromise = null;
+        }
+    })();
+    return activeRefreshPromise;
+}
+
 async function request(endpoint, options = {}, isRetry = false) {
     const url = endpoint.startsWith("http") ? endpoint : `${BASE_URL}${endpoint}`;
     const headers = new Headers(options.headers || {});
     if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
         headers.set("Content-Type", "application/json");
     }
-    const token = getStoredAccessToken();
+
+    let token = getStoredAccessToken();
+    // If attempting an authenticated endpoint before token initialization in browser, try silent refresh first
+    if (!token && !endpoint.includes("/auth/") && typeof window !== "undefined" && !isRetry) {
+        const refreshData = await executeTokenRefresh();
+        if (refreshData?.accessToken) {
+            token = refreshData.accessToken;
+        }
+    }
+
     if (token && !headers.has("Authorization")) {
         headers.set("Authorization", `Bearer ${token}`);
     }
@@ -63,25 +104,9 @@ async function request(endpoint, options = {}, isRetry = false) {
     }
     // Handle 401 Unauthorized transparent token refresh
     if (res.status === 401 && !isRetry && !endpoint.includes("/auth/")) {
-        try {
-            const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
-                method: "POST",
-                credentials: "include",
-            });
-            if (refreshRes.ok) {
-                const refreshData = (await refreshRes.json());
-                if (refreshData?.data?.accessToken) {
-                    setStoredAccessToken(refreshData.data.accessToken);
-                    return request(endpoint, options, true);
-                }
-            }
-            else {
-                // Refresh token failed or expired
-                setStoredAccessToken(null);
-            }
-        }
-        catch {
-            setStoredAccessToken(null);
+        const refreshData = await executeTokenRefresh();
+        if (refreshData?.accessToken) {
+            return request(endpoint, options, true);
         }
     }
     let body;
@@ -114,10 +139,10 @@ export const api = {
             return data;
         },
         refresh: async () => {
-            const data = await request("/auth/refresh", {
-                method: "POST",
-            });
-            setStoredAccessToken(data.accessToken);
+            const data = await executeTokenRefresh();
+            if (!data) {
+                throw new ApiError("Failed to refresh session", "UNAUTHORIZED", 401);
+            }
             return data;
         },
         logout: async () => {

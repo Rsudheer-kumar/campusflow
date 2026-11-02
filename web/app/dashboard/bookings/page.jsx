@@ -6,8 +6,10 @@ import { PageContainer, PageHeader } from "@/components/layout";
 import { Card, Badge, Button, Modal, Textarea, Skeleton, EmptyState } from "@/components/ui";
 import { CheckInModal } from "@/components/bookings/check-in-modal";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 export default function BookingsPage() {
+    const { user, isLoading: authLoading } = useAuth();
     const [bookings, setBookings] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [filterTab, setFilterTab] = useState("ALL");
@@ -19,35 +21,33 @@ export default function BookingsPage() {
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancelError, setCancelError] = useState(null);
     const fetchBookings = useCallback(async () => {
+        if (!user && !authLoading) {
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
         try {
             const res = await api.bookings.list({ limit: 50 });
             setBookings(res.bookings || []);
         }
         catch (err) {
-            console.error("Failed to fetch bookings", err);
+            if (err?.status !== 401) {
+                console.error("Failed to fetch bookings", err);
+            }
         }
         finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [user, authLoading]);
+
     useEffect(() => {
-        let ignore = false;
-        api.bookings.list({ limit: 50 }).then((res) => {
-            if (!ignore) {
-                setBookings(res.bookings || []);
-                setIsLoading(false);
-            }
-        }).catch((err) => {
-            if (!ignore) {
-                console.error("Failed to fetch bookings", err);
-                setIsLoading(false);
-            }
-        });
-        return () => {
-            ignore = true;
-        };
-    }, []);
+        if (authLoading) return;
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
+        fetchBookings();
+    }, [user, authLoading, fetchBookings]);
     // Execute cancellation
     const handleConfirmCancel = async () => {
         if (!cancelModalBooking)

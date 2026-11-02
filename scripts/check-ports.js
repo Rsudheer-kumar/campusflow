@@ -131,20 +131,67 @@ async function checkMongoTcpReachable(host, port) {
   return checkTcpConnect(host, port);
 }
 
+function ensureDependencies() {
+  const dirs = [
+    { name: 'api', path: path.join(PROJECT_ROOT, 'api') },
+    { name: 'web', path: path.join(PROJECT_ROOT, 'web') },
+  ];
+  for (const dir of dirs) {
+    const pkg = path.join(dir.path, 'package.json');
+    const nodeModules = path.join(dir.path, 'node_modules');
+    if (fs.existsSync(pkg) && !fs.existsSync(nodeModules)) {
+      console.log(`[CampusFlow Preflight] Installing missing dependencies for ${dir.name}...`);
+      try {
+        execSync(`npm install --prefix "${dir.name}"`, { stdio: 'inherit', cwd: PROJECT_ROOT });
+      } catch (err) {
+        console.warn(`[CampusFlow Preflight] Automatic npm install for ${dir.name} failed:`, err.message);
+      }
+    }
+  }
+}
+
 async function getMongoReadiness(config) {
   let MongoClient;
-  try {
-    ({ MongoClient } = require(path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongodb')));
-  } catch (error) {
+  const mongoPaths = [
+    path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongodb'),
+    path.join(PROJECT_ROOT, 'backend', 'node_modules', 'mongodb'),
+    path.join(PROJECT_ROOT, 'node_modules', 'mongodb'),
+  ];
+  for (const p of mongoPaths) {
     try {
-      const mongoose = require(path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongoose'));
-      MongoClient = mongoose.mongo.MongoClient;
-    } catch {
-      return {
-        ready: false,
-        reason: `MongoDB driver is unavailable: ${error instanceof Error ? error.message : String(error)}`,
-      };
+      ({ MongoClient } = require(p));
+      if (MongoClient) break;
+    } catch {}
+  }
+
+  if (!MongoClient) {
+    try {
+      ({ MongoClient } = require('mongodb'));
+    } catch {}
+  }
+
+  if (!MongoClient) {
+    const mongoosePaths = [
+      path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongoose'),
+      path.join(PROJECT_ROOT, 'backend', 'node_modules', 'mongoose'),
+      path.join(PROJECT_ROOT, 'node_modules', 'mongoose'),
+    ];
+    for (const p of mongoosePaths) {
+      try {
+        const mongoose = require(p);
+        if (mongoose && mongoose.mongo && mongoose.mongo.MongoClient) {
+          MongoClient = mongoose.mongo.MongoClient;
+          break;
+        }
+      } catch {}
     }
+  }
+
+  if (!MongoClient) {
+    return {
+      ready: false,
+      reason: 'MongoDB driver is unavailable in api, backend, or root node_modules. Please run "npm install".',
+    };
   }
 
   const client = new MongoClient(config.uri, {
@@ -368,6 +415,7 @@ async function checkPortAvailable(port) {
 }
 
 async function main() {
+  ensureDependencies();
   const conflicts = [];
 
   for (const { port, name } of PORTS_TO_CHECK) {
