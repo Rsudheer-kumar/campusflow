@@ -130,6 +130,9 @@ async function startServer() {
       }
     });
 
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
+
     server.listen(env.PORT, '0.0.0.0', () => {
       logger.info(`CampusFlow API HTTP server listening on 0.0.0.0:${env.PORT}`);
       logger.info(`Health check available at http://0.0.0.0:${env.PORT}/api/health`);

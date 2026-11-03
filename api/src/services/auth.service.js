@@ -4,9 +4,9 @@
  */
 
 import { User } from '../models/user.model.js';
-import { verifyPassword } from '../utils/password.js';
+import { verifyPassword, hashPassword, validatePasswordPolicy } from '../utils/password.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
-import { UnauthorizedError } from '../utils/errors.js';
+import { UnauthorizedError, ConflictError, BadRequestError } from '../utils/errors.js';
 
 export class AuthenticationService {
   /**
@@ -64,6 +64,7 @@ export class AuthenticationService {
       accessToken,
       user: {
         id: user._id.toString(),
+        name: user.name,
         email: user.email,
         roles: user.roles,
         department: user.department,
@@ -121,6 +122,7 @@ export class AuthenticationService {
       accessToken: newAccessToken,
       user: {
         id: user._id.toString(),
+        name: user.name,
         email: user.email,
         roles: user.roles,
         department: user.department,
@@ -135,6 +137,64 @@ export class AuthenticationService {
    * This invalidates all existing tokens (access and refresh) for the user immediately.
    * Requires user ID to be extracted from access token or other auth context.
    */
+  /**
+   * Registers a new user with password hashing and validates uniqueness.
+   * Issues JWT access and refresh tokens.
+   */
+  static async register({ name, email, password, roles, department }) {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      throw new ConflictError('An account with this email address already exists');
+    }
+
+    const policyResult = validatePasswordPolicy(password);
+    if (!policyResult.valid) {
+      throw new BadRequestError(`Password policy violation: ${policyResult.message}`);
+    }
+
+    const passwordHash = await hashPassword(password);
+    const assignedRoles = Array.isArray(roles) && roles.length > 0 ? roles : ['STUDENT'];
+
+    const user = await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      passwordHash,
+      roles: assignedRoles,
+      department: department?.trim() || 'General Studies',
+      isActive: true,
+      tokenVersion: 0,
+    });
+
+    const accessToken = signAccessToken({
+      sub: user._id.toString(),
+      email: user.email,
+      roles: user.roles,
+      department: user.department,
+      isActive: true,
+      tokenVersion: 0,
+    });
+
+    const refreshToken = signRefreshToken({
+      sub: user._id.toString(),
+      tokenVersion: 0,
+    });
+
+    return {
+      accessToken,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        roles: user.roles,
+        department: user.department,
+        isActive: user.isActive,
+      },
+      refreshToken,
+    };
+  }
+
   static async logout(userId) {
     // Atomically increment tokenVersion
     await User.findByIdAndUpdate(userId, {

@@ -68,6 +68,7 @@ export function setStoredUser(user) {
 // ─── HTTP Core Transport ───────────────────────────────────────────────────────
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
+let lastRefreshStatus = null;
 let activeRefreshPromise = null;
 
 async function executeTokenRefresh() {
@@ -80,6 +81,7 @@ async function executeTokenRefresh() {
                 method: "POST",
                 credentials: "include",
             });
+            lastRefreshStatus = refreshRes.status;
             if (refreshRes.ok) {
                 const refreshData = await refreshRes.json();
                 if (refreshData?.data?.accessToken) {
@@ -98,6 +100,7 @@ async function executeTokenRefresh() {
             }
             return null;
         } catch {
+            lastRefreshStatus = 0;
             // Network failure or temporary error: preserve cached tokens
             return null;
         } finally {
@@ -136,7 +139,15 @@ async function request(endpoint, options = {}, isRetry = false) {
         res = await fetch(url, fetchOptions);
     }
     catch (netErr) {
+        if (!isRetry) {
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+            return request(endpoint, options, true);
+        }
         throw new ApiError("Unable to connect to CampusFlow server. Please check your network or server status.", "NETWORK_ERROR", 0);
+    }
+    if ((res.status === 502 || res.status === 503 || res.status === 504) && !isRetry) {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        return request(endpoint, options, true);
     }
     // Handle 401 Unauthorized transparent token refresh
     if (res.status === 401 && !isRetry && !endpoint.includes("/auth/")) {
@@ -177,10 +188,24 @@ export const api = {
             }
             return data;
         },
+        register: async (payload) => {
+            const data = await request("/auth/register", {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+            setStoredAccessToken(data.accessToken);
+            if (data.user) {
+                setStoredUser(data.user);
+            }
+            return data;
+        },
         refresh: async () => {
             const data = await executeTokenRefresh();
             if (!data) {
-                throw new ApiError("Failed to refresh session", "UNAUTHORIZED", 401);
+                if (lastRefreshStatus === 401) {
+                    throw new ApiError("Session expired. Please sign in again.", "UNAUTHORIZED", 401);
+                }
+                throw new ApiError("Backend is warming up or temporarily unreachable", "SERVICE_UNAVAILABLE", 503);
             }
             return data;
         },

@@ -59,11 +59,23 @@ export function AuthProvider({ children }) {
             mounted = false;
         };
     }, []);
+    const register = useCallback(async (payload) => {
+        setIsLoading(true);
+        try {
+            const data = await api.auth.register(payload);
+            setUser(data.user);
+            return data;
+        }
+        finally {
+            setIsLoading(false);
+        }
+    }, []);
     const login = useCallback(async (email, password) => {
         setIsLoading(true);
         try {
             const data = await api.auth.login(email, password);
             setUser(data.user);
+            return data;
         }
         finally {
             setIsLoading(false);
@@ -106,6 +118,7 @@ export function AuthProvider({ children }) {
             isLoading,
             isAuthenticated: !!user,
             login,
+            register,
             logout,
             switchRole,
         }}>

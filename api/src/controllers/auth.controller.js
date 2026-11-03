@@ -65,6 +65,56 @@ export const login = async (req, res, next) => {
  * Issues a new access token using the refresh token cookie
  * Also rotates the refresh token (new cookie with new jti)
  */
+/**
+ * POST /api/auth/register
+ * Creates a new user in MongoDB, issues access token and sets refresh cookie
+ */
+export const register = async (req, res, next) => {
+  try {
+    const { name, email, password, role, department } = req.body || {};
+
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+      sendError(res, 'VALIDATION_ERROR', 'Name must be at least 2 characters', 400);
+      return;
+    }
+
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      sendError(res, 'VALIDATION_ERROR', 'Please provide a valid institutional email address', 400);
+      return;
+    }
+
+    if (!password || typeof password !== 'string') {
+      sendError(res, 'VALIDATION_ERROR', 'Password is required', 400);
+      return;
+    }
+
+    const roles = role ? [role] : ['STUDENT'];
+
+    const { accessToken, refreshToken, user } = await AuthenticationService.register({
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      roles,
+      department: department?.trim(),
+    });
+
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
+      httpOnly: true,
+      secure: env.isProduction,
+      sameSite: 'lax',
+      path: REFRESH_COOKIE_PATH,
+      maxAge: REFRESH_COOKIE_MAX_AGE,
+    });
+
+    sendSuccess(res, {
+      accessToken,
+      user,
+    }, 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const refresh = async (req, res, next) => {
   try {
     // Extract refresh token from cookie

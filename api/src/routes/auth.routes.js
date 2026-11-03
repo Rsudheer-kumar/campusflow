@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import { login, refresh, logout, getProfile, updateProfile } from '../controllers/auth.controller.js';
+import { login, register, refresh, logout, getProfile, updateProfile } from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/auth.js';
 
 const authRoutes = Router();
@@ -17,6 +17,7 @@ const authRoutes = Router();
  * Sets cf_refresh cookie (httpOnly, SameSite=Lax, path=/api/auth)
  */
 authRoutes.post('/login', login);
+authRoutes.post('/register', register);
 
 /**
  * POST /api/auth/refresh
