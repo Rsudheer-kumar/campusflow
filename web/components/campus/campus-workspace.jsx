@@ -49,7 +49,15 @@ export function CampusWorkspace({
 }) {
   const [selectedBuildingId, setSelectedBuildingId] = useState("bld-turing");
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(new Date()));
-  const [startTime, setStartTime] = useState("09:00");
+  const [startTime, setStartTime] = useState(() => {
+    const now = new Date();
+    if (now.getUTCHours() >= 21) {
+      return "09:00";
+    }
+    const currentUtcHour = now.getUTCHours();
+    const targetHour = Math.min(20, Math.max(8, currentUtcHour));
+    return `${String(targetHour).padStart(2, "0")}:00`;
+  });
   const [durationMinutes, setDurationMinutes] = useState(120);
   const [viewMode, setViewMode] = useState("3d"); // "3d" | "2d"
   const [selectedFloor, setSelectedFloor] = useState("ALL");

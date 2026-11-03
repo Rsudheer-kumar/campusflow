@@ -768,7 +768,7 @@ export class AvailabilityService {
 
         const leadTimeMinutes = Math.round((startAt.getTime() - now.getTime()) / 60000);
         const minLead = policy.minLeadTimeMinutes ?? 0;
-        if (leadTimeMinutes < minLead) {
+        if (minLead > 0 && startAt.getTime() > now.getTime() && leadTimeMinutes < minLead) {
           facilityResults.push({
             id: idStr,
             name: resource.name,
