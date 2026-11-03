@@ -4,10 +4,25 @@ import Link from "next/link";
 import { LogOut, Globe, UserCheck, Shield, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
 export function UserMenu() {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
-    const { user, logout, switchRole } = useAuth();
+    const { user, logout, switchRole, isLoading } = useAuth();
+
+    if (isLoading) {
+      return <div className="h-9 w-9 rounded-full bg-surface-2 animate-pulse" />;
+    }
+
+    if (!user) {
+      return (
+        <Link href="/signin">
+          <Button size="sm" variant="primary" className="text-xs font-medium">
+            Sign In
+          </Button>
+        </Link>
+      );
+    }
     // Close on click outside
     useEffect(() => {
         if (!isOpen)

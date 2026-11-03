@@ -1,26 +1,42 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, } from "react";
-import { api, setStoredAccessToken } from "./api";
+import { api, setStoredAccessToken, getStoredAccessToken, getStoredUser, setStoredUser } from "./api";
 const AuthContext = createContext(undefined);
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [user, setUser] = useState(() => getStoredUser());
+    const [isLoading, setIsLoading] = useState(() => !getStoredUser());
+
     // Initialize session on mount
     useEffect(() => {
         let mounted = true;
         async function initAuth() {
+            // Restore from localStorage immediately if present
+            const cachedUser = getStoredUser();
+            const token = getStoredAccessToken();
+            if (cachedUser && token && mounted) {
+                setUser(cachedUser);
+                setIsLoading(false);
+            }
+
             try {
-                // Try silent refresh first
+                // Silent refresh in background
                 const data = await api.auth.refresh();
-                if (mounted && data.user) {
+                if (mounted && data?.user) {
                     setUser(data.user);
+                    setStoredUser(data.user);
                     setIsLoading(false);
                     return;
                 }
             }
-            catch {
-                // In local development only, allow student fallback if initial session check fails
-                if (process.env.NODE_ENV === "development") {
+            catch (err) {
+                // Only clear session if server explicitly returns 401 Unauthorized
+                if (err?.status === 401) {
+                    if (mounted) {
+                        setUser(null);
+                        setStoredUser(null);
+                        setStoredAccessToken(null);
+                    }
+                } else if (process.env.NODE_ENV === "development" && !cachedUser) {
                     try {
                         const loginData = await api.auth.login("student@campusflow.edu", "CampusFlow@2026!");
                         if (mounted && loginData.user) {
@@ -28,13 +44,7 @@ export function AuthProvider({ children }) {
                         }
                     }
                     catch {
-                        if (mounted) {
-                            setUser(null);
-                        }
-                    }
-                } else {
-                    if (mounted) {
-                        setUser(null);
+                        if (mounted) setUser(null);
                     }
                 }
             }

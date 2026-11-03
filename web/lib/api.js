@@ -16,8 +16,10 @@ export class ApiError extends Error {
         this.details = details;
     }
 }
-// ─── Token Management ─────────────────────────────────────────────────────────
+// ─── Token & User Management ───────────────────────────────────────────────────
 let memoryAccessToken = null;
+let memoryUser = null;
+
 export function getStoredAccessToken() {
     if (memoryAccessToken)
         return memoryAccessToken;
@@ -26,6 +28,7 @@ export function getStoredAccessToken() {
     }
     return null;
 }
+
 export function setStoredAccessToken(token) {
     memoryAccessToken = token;
     if (typeof window !== "undefined") {
@@ -34,6 +37,31 @@ export function setStoredAccessToken(token) {
         }
         else {
             localStorage.removeItem("cf_access_token");
+        }
+    }
+}
+
+export function getStoredUser() {
+    if (memoryUser)
+        return memoryUser;
+    if (typeof window !== "undefined") {
+        try {
+            const raw = localStorage.getItem("cf_user");
+            return raw ? JSON.parse(raw) : null;
+        } catch {
+            return null;
+        }
+    }
+    return null;
+}
+
+export function setStoredUser(user) {
+    memoryUser = user;
+    if (typeof window !== "undefined") {
+        if (user) {
+            localStorage.setItem("cf_user", JSON.stringify(user));
+        } else {
+            localStorage.removeItem("cf_user");
         }
     }
 }
@@ -56,13 +84,21 @@ async function executeTokenRefresh() {
                 const refreshData = await refreshRes.json();
                 if (refreshData?.data?.accessToken) {
                     setStoredAccessToken(refreshData.data.accessToken);
+                    if (refreshData?.data?.user) {
+                        setStoredUser(refreshData.data.user);
+                    }
                     return refreshData.data;
                 }
             }
-            setStoredAccessToken(null);
+            // Only clear stored tokens if the server explicitly confirms 401 Unauthorized (session expired/revoked)
+            // Do NOT clear on 429 rate limit, 500 server error, or transient connection blips
+            if (refreshRes.status === 401) {
+                setStoredAccessToken(null);
+                setStoredUser(null);
+            }
             return null;
         } catch {
-            setStoredAccessToken(null);
+            // Network failure or temporary error: preserve cached tokens
             return null;
         } finally {
             activeRefreshPromise = null;
@@ -136,6 +172,9 @@ export const api = {
                 body: JSON.stringify({ email, password }),
             });
             setStoredAccessToken(data.accessToken);
+            if (data.user) {
+                setStoredUser(data.user);
+            }
             return data;
         },
         refresh: async () => {
@@ -151,6 +190,7 @@ export const api = {
             }
             finally {
                 setStoredAccessToken(null);
+                setStoredUser(null);
             }
         },
         getProfile: async () => {

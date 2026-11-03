@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,12 +93,18 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
         }
         catch (err) {
             if (err instanceof ApiError) {
+                const isAuthError = err.status === 401 ||
+                    err.code === "UNAUTHORIZED" ||
+                    err.message.toLowerCase().includes("authorization header") ||
+                    err.message.toLowerCase().includes("bearer token");
                 const isTimetableConflict = err.code === "TIMETABLE_CONFLICT" ||
                     err.message.includes("TIMETABLE_CONFLICT") ||
                     err.message.toLowerCase().includes("academic timetable");
                 const isNoShowSuspension = err.code === "NO_SHOW_RESTRICTION_ACTIVE" ||
                     err.message.includes("unexcused no-shows");
-                let formattedMessage = isTimetableConflict
+                let formattedMessage = isAuthError
+                    ? "You must be signed in with your university account to reserve facilities. Your session may have expired."
+                    : isTimetableConflict
                     ? "Academic Timetable Conflict: This facility is reserved for an authoritative institutional curriculum session during this period. Academic courses take precedence over ad-hoc user reservations."
                     : err.message;
                 if (isNoShowSuspension) {
@@ -117,6 +124,7 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
                     message: formattedMessage,
                     isTimetable: isTimetableConflict,
                     isNoShowSuspension,
+                    isAuth: isAuthError,
                 });
             }
             else {
@@ -137,21 +145,32 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
       <form onSubmit={handleSubmit} className="flex flex-col">
         <div className="space-y-4">
           {/* Timetable or General Conflict Error Banner */}
-          {conflictError && (<div className={`p-3.5 rounded-[var(--radius-md)] border text-sm flex items-start gap-3 animate-fade-in ${conflictError.isTimetable
+          {conflictError && (<div className={`p-3.5 rounded-[var(--radius-md)] border text-sm flex items-start gap-3 animate-fade-in ${conflictError.isTimetable || conflictError.isNoShowSuspension || conflictError.isAuth
                 ? "bg-danger/10 border-danger/40 text-danger"
-                : conflictError.isNoShowSuspension
-                    ? "bg-danger/10 border-danger/40 text-danger"
-                    : "bg-warning/10 border-warning/40 text-warning"}`}>
+                : "bg-warning/10 border-warning/40 text-warning"}`}>
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5"/>
-              <div className="space-y-1">
-                <p className="font-semibold leading-tight">
-                  {conflictError.isTimetable
-                ? "Institutional Timetable Conflict (HTTP 409)"
-                : conflictError.isNoShowSuspension
-                    ? "Booking Privileges Suspended (No-Show Policy)"
-                    : "Reservation Conflict"}
-                </p>
-                <p className="text-xs leading-relaxed opacity-90">{conflictError.message}</p>
+              <div className="space-y-2 w-full">
+                <div>
+                  <p className="font-semibold leading-tight">
+                    {conflictError.isAuth
+                  ? "Authentication Required (HTTP 401)"
+                  : conflictError.isTimetable
+                  ? "Institutional Timetable Conflict (HTTP 409)"
+                  : conflictError.isNoShowSuspension
+                      ? "Booking Privileges Suspended (No-Show Policy)"
+                      : "Reservation Conflict"}
+                  </p>
+                  <p className="text-xs leading-relaxed opacity-90 mt-0.5">{conflictError.message}</p>
+                </div>
+                {conflictError.isAuth && (
+                  <div>
+                    <Link href="/signin">
+                      <Button size="sm" variant="primary" type="button">
+                        Sign In with Institutional Account
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>)}
 
