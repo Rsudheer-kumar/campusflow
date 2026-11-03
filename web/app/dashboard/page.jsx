@@ -55,9 +55,11 @@ function resolveInstitutionalTimezone(user) {
     return process.env.NEXT_PUBLIC_DEFAULT_TIMEZONE.trim();
   }
   try {
-    const clientTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (clientTz && typeof clientTz === "string" && (clientTz.includes("/") || clientTz === "UTC" || clientTz === "GMT")) {
-      return clientTz;
+    if (typeof window !== "undefined") {
+      const clientTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (clientTz && typeof clientTz === "string" && (clientTz.includes("/") || clientTz === "UTC" || clientTz === "GMT")) {
+        return clientTz;
+      }
     }
   } catch {
     // Intl timezone resolution unavailable
@@ -511,10 +513,11 @@ export default function DashboardPage() {
             <div
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-border text-xs text-muted font-mono"
               title={`Institutional display timezone: ${timeZone}`}
+              suppressHydrationWarning
             >
               <Calendar className="h-4 w-4 text-primary shrink-0" />
-              <span>{formatHeaderDate(new Date(), timeZone)}</span>
-              <span className="px-1.5 py-0.5 rounded bg-surface-2 text-[10px] text-foreground font-semibold">
+              <span suppressHydrationWarning>{formatHeaderDate(new Date(), timeZone)}</span>
+              <span suppressHydrationWarning className="px-1.5 py-0.5 rounded bg-surface-2 text-[10px] text-foreground font-semibold">
                 {timeZone === "UTC" ? "UTC" : timeZone}
               </span>
             </div>

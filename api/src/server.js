@@ -130,9 +130,9 @@ async function startServer() {
       }
     });
 
-    server.listen(env.PORT, () => {
-      logger.info(`CampusFlow API HTTP server listening on port ${env.PORT}`);
-      logger.info(`Health check available at http://localhost:${env.PORT}/api/health`);
+    server.listen(env.PORT, '0.0.0.0', () => {
+      logger.info(`CampusFlow API HTTP server listening on 0.0.0.0:${env.PORT}`);
+      logger.info(`Health check available at http://0.0.0.0:${env.PORT}/api/health`);
     });
   } catch (error) {
     logger.error('Fatal error during API startup', error instanceof Error ? error.message : error);

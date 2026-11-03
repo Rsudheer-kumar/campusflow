@@ -18,14 +18,18 @@ import {
   blackoutRouter,
   quotaRouter,
 } from './ruleAdmin.routes.js';
+import { validateProxySecret } from '../middleware/proxyAuth.js';
 
 const router = Router();
 
+// Health & diagnostics endpoint: /api/health (always public for infrastructure probes & Render)
+router.use('/health', healthRoutes);
+
+// Ingress Proxy Authentication (validates shared secret from frontend proxy in production)
+router.use(validateProxySecret);
+
 // Authentication endpoints: /api/auth
 router.use('/auth', authRoutes);
-
-// Health & diagnostics endpoint: /api/health
-router.use('/health', healthRoutes);
 
 // Facility & resource catalogue endpoints: /api/resources
 router.use('/resources', resourceRoutes);
