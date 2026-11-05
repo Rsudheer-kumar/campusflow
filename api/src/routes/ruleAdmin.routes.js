@@ -61,13 +61,31 @@ availabilityRuleRouter.put(
   RuleAdminController.updateAvailabilityRule
 );
 
-// Deactivate rule
+// Deactivate rule (DELETE)
 availabilityRuleRouter.delete(
   '/:id',
   authenticate,
   requireRoles(UserRole.ADMIN, UserRole.FACILITY_MANAGER),
   validateRequest({ params: validateMongoId('id') }),
   RuleAdminController.deleteAvailabilityRule
+);
+
+// Deactivate rule with reason (POST)
+availabilityRuleRouter.post(
+  '/:id/deactivate',
+  authenticate,
+  requireRoles(UserRole.ADMIN, UserRole.FACILITY_MANAGER),
+  validateRequest({ params: validateMongoId('id') }),
+  RuleAdminController.deleteAvailabilityRule
+);
+
+// Activate rule (POST)
+availabilityRuleRouter.post(
+  '/:id/activate',
+  authenticate,
+  requireRoles(UserRole.ADMIN, UserRole.FACILITY_MANAGER),
+  validateRequest({ params: validateMongoId('id') }),
+  RuleAdminController.activateAvailabilityRule
 );
 
 /* ==========================================================================

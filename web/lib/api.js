@@ -583,9 +583,21 @@ export const api = {
                 body: JSON.stringify(payload),
             });
         },
-        delete: async (id) => {
+        delete: async (id, reason) => {
             return request(`/availability-rules/${id}`, {
                 method: "DELETE",
+                body: reason ? JSON.stringify({ reason }) : undefined,
+            });
+        },
+        deactivate: async (id, reason) => {
+            return request(`/availability-rules/${id}/deactivate`, {
+                method: "POST",
+                body: JSON.stringify({ reason }),
+            });
+        },
+        activate: async (id) => {
+            return request(`/availability-rules/${id}/activate`, {
+                method: "POST",
             });
         },
     },

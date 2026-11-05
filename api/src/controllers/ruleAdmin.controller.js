@@ -52,7 +52,18 @@ export class RuleAdminController {
   static async deleteAvailabilityRule(req, res, next) {
     try {
       const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-      const result = await RuleAdminService.deleteAvailabilityRule(id);
+      const reason = req.body?.reason || req.query?.reason;
+      const result = await RuleAdminService.deleteAvailabilityRule(id, reason);
+      sendSuccess(res, result, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async activateAvailabilityRule(req, res, next) {
+    try {
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const result = await RuleAdminService.activateAvailabilityRule(id);
       sendSuccess(res, result, 200);
     } catch (error) {
       next(error);

@@ -12,6 +12,7 @@ import {
   Blackout,
   Quota,
   Resource,
+  ResourceStatus,
   ResourceType,
   User,
 } from '../models/index.js';
@@ -60,6 +61,7 @@ export class RuleAdminService {
       throw new NotFoundError(`Resource with ID "${input.resource}" not found`);
     }
 
+    const isActive = input.isActive !== undefined ? Boolean(input.isActive) : true;
     const rule = new AvailabilityRule({
       resource: new Types.ObjectId(input.resource),
       name: input.name,
@@ -68,10 +70,18 @@ export class RuleAdminService {
       bookingPolicy: input.bookingPolicy,
       effectiveFrom: input.effectiveFrom,
       effectiveTo: input.effectiveTo,
-      isActive: input.isActive !== undefined ? input.isActive : true,
+      isActive,
+      deactivationReason: !isActive ? (input.deactivationReason || 'Scheduled facility maintenance') : null,
     });
 
     await rule.save();
+
+    if (!isActive) {
+      await Resource.findByIdAndUpdate(input.resource, {
+        status: ResourceStatus.MAINTENANCE,
+      });
+    }
+
     return await AvailabilityRule.findById(rule._id)
       .populate('resource', 'name code location capacity')
       .lean();
@@ -89,7 +99,31 @@ export class RuleAdminService {
     if (input.bookingPolicy !== undefined) rule.bookingPolicy = input.bookingPolicy;
     if (input.effectiveFrom !== undefined) rule.effectiveFrom = input.effectiveFrom;
     if (input.effectiveTo !== undefined) rule.effectiveTo = input.effectiveTo;
-    if (input.isActive !== undefined) rule.isActive = input.isActive;
+
+    if (input.isActive !== undefined) {
+      rule.isActive = Boolean(input.isActive);
+      if (!rule.isActive) {
+        if (input.deactivationReason !== undefined) {
+          rule.deactivationReason = input.deactivationReason;
+        } else if (!rule.deactivationReason) {
+          rule.deactivationReason = 'Scheduled facility maintenance';
+        }
+        if (rule.resource) {
+          await Resource.findByIdAndUpdate(rule.resource, {
+            status: ResourceStatus.MAINTENANCE,
+          });
+        }
+      } else {
+        rule.deactivationReason = null;
+        if (rule.resource) {
+          await Resource.findByIdAndUpdate(rule.resource, {
+            status: ResourceStatus.ACTIVE,
+          });
+        }
+      }
+    } else if (input.deactivationReason !== undefined) {
+      rule.deactivationReason = input.deactivationReason;
+    }
 
     await rule.save();
     return await AvailabilityRule.findById(rule._id)
@@ -97,15 +131,54 @@ export class RuleAdminService {
       .lean();
   }
 
-  static async deleteAvailabilityRule(id) {
+  static async deleteAvailabilityRule(id, reason) {
     const rule = await AvailabilityRule.findById(id);
     if (!rule) {
       throw new NotFoundError(`AvailabilityRule with ID "${id}" not found`);
     }
 
     rule.isActive = false;
+    rule.deactivationReason = reason && String(reason).trim() ? String(reason).trim() : 'Scheduled facility maintenance';
     await rule.save();
-    return { success: true, message: 'Availability rule deactivated successfully' };
+
+    if (rule.resource) {
+      await Resource.findByIdAndUpdate(rule.resource, {
+        status: ResourceStatus.MAINTENANCE,
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Availability rule deactivated and facility marked under maintenance',
+      rule: await AvailabilityRule.findById(rule._id)
+        .populate('resource', 'name code location capacity')
+        .lean(),
+    };
+  }
+
+  static async activateAvailabilityRule(id) {
+    const rule = await AvailabilityRule.findById(id);
+    if (!rule) {
+      throw new NotFoundError(`AvailabilityRule with ID "${id}" not found`);
+    }
+
+    rule.isActive = true;
+    rule.deactivationReason = null;
+    await rule.save();
+
+    if (rule.resource) {
+      await Resource.findByIdAndUpdate(rule.resource, {
+        status: ResourceStatus.ACTIVE,
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Availability rule activated and facility restored to active service',
+      rule: await AvailabilityRule.findById(rule._id)
+        .populate('resource', 'name code location capacity')
+        .lean(),
+    };
   }
 
   /* ==========================================================================

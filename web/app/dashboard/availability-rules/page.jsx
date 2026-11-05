@@ -14,6 +14,8 @@ import {
   Building2,
   CheckCircle2,
   Calendar,
+  Wrench,
+  ShieldAlert,
 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/layout";
 import {
@@ -83,6 +85,14 @@ export default function AvailabilityRulesPage() {
   });
   const [ruleModalError, setRuleModalError] = useState(null);
   const [isSubmittingRule, setIsSubmittingRule] = useState(false);
+
+  // Deactivate & Maintenance Modal State
+  const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
+  const [ruleToDeactivate, setRuleToDeactivate] = useState(null);
+  const [deactivateReason, setDeactivateReason] = useState("");
+  const [deactivateModalError, setDeactivateModalError] = useState(null);
+  const [isDeactivatingRule, setIsDeactivatingRule] = useState(false);
+  const [isActivatingRuleId, setIsActivatingRuleId] = useState(null);
 
   // Blackouts State
   const [blackouts, setBlackouts] = useState([]);
@@ -260,13 +270,55 @@ export default function AvailabilityRulesPage() {
     }
   };
 
-  const handleDeleteRule = async (id) => {
-    if (!window.confirm("Are you sure you want to deactivate this availability rule?")) return;
+  const handleOpenDeactivateModal = (rule) => {
+    setRuleToDeactivate(rule);
+    setDeactivateReason("");
+    setDeactivateModalError(null);
+    setIsDeactivateModalOpen(true);
+  };
+
+  const handleConfirmDeactivate = async (e) => {
+    if (e) e.preventDefault();
+    if (!ruleToDeactivate) return;
+    const trimmedReason = deactivateReason.trim();
+    if (!trimmedReason) {
+      setDeactivateModalError("Please enter an internal reason for placing this facility under maintenance.");
+      return;
+    }
+    if (trimmedReason.length < 2) {
+      setDeactivateModalError("Reason must be at least 2 characters.");
+      return;
+    }
+    if (trimmedReason.length > 500) {
+      setDeactivateModalError("Reason cannot exceed 500 characters.");
+      return;
+    }
+
+    setIsDeactivatingRule(true);
+    setDeactivateModalError(null);
     try {
-      await api.availabilityRules.delete(id);
+      await api.availabilityRules.deactivate(ruleToDeactivate._id, trimmedReason);
+      setIsDeactivateModalOpen(false);
+      setRuleToDeactivate(null);
       await loadData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete rule");
+      console.error("Failed to deactivate rule", err);
+      setDeactivateModalError(err instanceof Error ? err.message : "Failed to deactivate rule");
+    } finally {
+      setIsDeactivatingRule(false);
+    }
+  };
+
+  const handleActivateRule = async (id) => {
+    setIsActivatingRuleId(id);
+    try {
+      await api.availabilityRules.activate(id);
+      await loadData();
+    } catch (err) {
+      console.error("Failed to activate rule", err);
+      alert(err instanceof Error ? err.message : "Failed to activate facility");
+    } finally {
+      setIsActivatingRuleId(null);
     }
   };
 
@@ -510,8 +562,8 @@ export default function AvailabilityRulesPage() {
                               <h3 className="text-base font-semibold text-foreground">
                                 {rule.name}
                               </h3>
-                              <Badge variant={rule.isActive ? "available" : "secondary"}>
-                                {rule.isActive ? "ACTIVE" : "INACTIVE"}
+                              <Badge variant={rule.isActive ? "available" : "warning"}>
+                                {rule.isActive ? "ACTIVE" : "INACTIVE (Under Maintenance)"}
                               </Badge>
                             </div>
                             <p className="text-xs text-muted mt-0.5">
@@ -534,18 +586,51 @@ export default function AvailabilityRulesPage() {
                               >
                                 Edit Policy
                               </Button>
-                              <Button
-                                size="xs"
-                                variant="ghost"
-                                className="text-danger hover:bg-danger/10"
-                                icon={<Trash2 className="h-3.5 w-3.5" />}
-                                onClick={() => handleDeleteRule(rule._id)}
-                              >
-                                Deactivate
-                              </Button>
+                              {rule.isActive ? (
+                                <Button
+                                  size="xs"
+                                  variant="ghost"
+                                  className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"
+                                  icon={<Wrench className="h-3.5 w-3.5" />}
+                                  onClick={() => handleOpenDeactivateModal(rule)}
+                                >
+                                  Deactivate
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="xs"
+                                  variant="default"
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs"
+                                  icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                                  loading={isActivatingRuleId === rule._id}
+                                  onClick={() => handleActivateRule(rule._id)}
+                                >
+                                  Activate Facility
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>
+
+                        {!rule.isActive && (
+                          <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-xs flex items-start gap-2.5">
+                            <Wrench className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-amber-300">Under Scheduled Maintenance</span>
+                                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  Admin Reason
+                                </span>
+                              </div>
+                              <p className="text-amber-200/90 font-medium">
+                                {rule.deactivationReason || "Scheduled facility maintenance"}
+                              </p>
+                              <p className="text-[11px] text-amber-400/70 italic">
+                                🔒 Confidential: Visible only to administrators. Students and faculty see standard &quot;Under Maintenance&quot; notice without this internal detail.
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Booking Policies Overview */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-surface-2/30 p-3 rounded-lg text-xs">
@@ -1057,6 +1142,84 @@ export default function AvailabilityRulesPage() {
               </Button>
               <Button type="submit" variant="danger" loading={isSubmittingBlackout}>
                 Enforce Blackout
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* MODAL: DEACTIVATE & PLACE FACILITY UNDER MAINTENANCE */}
+        <Modal
+          open={isDeactivateModalOpen}
+          onClose={() => !isDeactivatingRule && setIsDeactivateModalOpen(false)}
+          title="Deactivate Facility & Place Under Maintenance"
+          description={`Specify an internal maintenance reason before taking ${ruleToDeactivate?.resource?.name || "this facility"} offline.`}
+          size="md"
+        >
+          <form onSubmit={handleConfirmDeactivate} className="space-y-4">
+            {deactivateModalError && (
+              <div className="p-3 rounded bg-danger/10 border border-danger/30 text-xs text-danger flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{deactivateModalError}</span>
+              </div>
+            )}
+
+            <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-amber-300 font-semibold">
+                <ShieldAlert className="h-4 w-4" />
+                <span>Facility Under Maintenance Status</span>
+              </div>
+              <p>
+                Deactivating this rule immediately marks{" "}
+                <strong className="text-white">
+                  {ruleToDeactivate?.resource?.name} ({ruleToDeactivate?.resource?.code})
+                </strong>{" "}
+                as <strong className="text-amber-400">Under Maintenance</strong>.
+              </p>
+              <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-amber-300/80">
+                <li>All booking requests by students and faculty will be blocked until reactivated.</li>
+                <li>Digital Twin map and Catalogue will display a Maintenance beacon.</li>
+              </ul>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-foreground">
+                  Internal Maintenance Reason <span className="text-danger">*</span>
+                </label>
+                <span className="text-[11px] text-muted">{deactivateReason.length}/500</span>
+              </div>
+              <textarea
+                rows={3}
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                placeholder="e.g., Scheduled HVAC duct repair, emergency electrical rewiring, floor resurfacing..."
+                value={deactivateReason}
+                onChange={(e) => setDeactivateReason(e.target.value)}
+                maxLength={500}
+                required
+                autoFocus
+              />
+              <p className="text-[11px] text-muted flex items-center gap-1.5 pt-0.5">
+                <span>🔒</span>
+                <span>Confidential: Reason is visible only to Admins and Facility Managers. Students and faculty will only see &quot;Under Maintenance&quot;.</span>
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-border/50">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isDeactivatingRule}
+                onClick={() => setIsDeactivateModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="destructive"
+                loading={isDeactivatingRule}
+                icon={<Wrench className="h-4 w-4" />}
+              >
+                Confirm &amp; Place Under Maintenance
               </Button>
             </div>
           </form>

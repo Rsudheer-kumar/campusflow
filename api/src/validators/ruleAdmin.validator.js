@@ -218,6 +218,19 @@ export function validateCreateAvailabilityRuleBody(data) {
   }
 
   const isActive = record.isActive !== undefined ? Boolean(record.isActive) : true;
+  let deactivationReason = null;
+  if (record.deactivationReason !== undefined && record.deactivationReason !== null) {
+    if (typeof record.deactivationReason !== 'string') {
+      errors.push({ field: 'deactivationReason', message: 'deactivationReason must be a string' });
+    } else {
+      const trimmed = record.deactivationReason.trim();
+      if (trimmed.length > 500) {
+        errors.push({ field: 'deactivationReason', message: 'deactivationReason cannot exceed 500 characters' });
+      } else {
+        deactivationReason = trimmed;
+      }
+    }
+  }
 
   if (errors.length > 0) {
     return { success: false, errors };
@@ -234,6 +247,7 @@ export function validateCreateAvailabilityRuleBody(data) {
       effectiveFrom,
       effectiveTo,
       isActive,
+      deactivationReason,
     },
   };
 }
@@ -304,6 +318,21 @@ export function validateUpdateAvailabilityRuleBody(data) {
 
   if (record.isActive !== undefined) {
     validated.isActive = Boolean(record.isActive);
+  }
+
+  if (record.deactivationReason !== undefined) {
+    if (record.deactivationReason === null) {
+      validated.deactivationReason = null;
+    } else if (typeof record.deactivationReason !== 'string') {
+      errors.push({ field: 'deactivationReason', message: 'deactivationReason must be a string or null' });
+    } else {
+      const trimmed = record.deactivationReason.trim();
+      if (trimmed.length > 500) {
+        errors.push({ field: 'deactivationReason', message: 'deactivationReason cannot exceed 500 characters' });
+      } else {
+        validated.deactivationReason = trimmed;
+      }
+    }
   }
 
   if (errors.length > 0) {

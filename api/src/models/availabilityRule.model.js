@@ -215,6 +215,12 @@ export const AvailabilityRuleSchema = new Schema(
       required: true,
       index: true,
     },
+    deactivationReason: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Deactivation reason cannot exceed 500 characters'],
+      default: null,
+    },
   },
   {
     timestamps: true,
