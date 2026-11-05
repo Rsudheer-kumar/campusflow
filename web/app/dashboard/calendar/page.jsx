@@ -434,15 +434,24 @@ function CalendarView() {
               </div>
             </div>)}
           {activeResource && activeResource.status === "MAINTENANCE" && (
-            <div className="mt-3 p-3.5 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-200 flex items-start gap-3">
-              <Wrench className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-semibold text-red-300 block text-sm">
-                  Facility Under Maintenance
-                </span>
-                <p className="mt-0.5 text-red-200/90 leading-relaxed">
-                  <strong>{activeResource.name} ({activeResource.code})</strong> is currently closed for scheduled maintenance work. All time slots are locked and reservations cannot be booked at this time.
-                </p>
+            <div className="mt-4 p-5 rounded-xl bg-gradient-to-r from-red-950/60 via-red-900/30 to-surface-2/60 border-2 border-red-500/50 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0 shadow-inner">
+                  <Wrench className="h-6 w-6 text-red-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="font-bold text-red-300 text-base md:text-lg tracking-wide uppercase">
+                      Facility Under Maintenance
+                    </span>
+                    <Badge variant="warning" className="bg-red-500/20 text-red-300 border-red-500/40 text-xs font-bold uppercase tracking-wider px-2 py-0.5">
+                      All Time Slots Locked
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs md:text-sm text-red-200/90 leading-relaxed">
+                    <strong>{activeResource.name} ({activeResource.code})</strong> is currently closed for scheduled maintenance work. Online booking is temporarily disabled across all days and times until reactivated.
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -534,7 +543,7 @@ function CalendarView() {
                         const matchingBk = scheduleIndex.bkMap.get(slotKey) ?? null;
                         const isMaintenanceFacility = activeResource?.status === "MAINTENANCE";
                         return (<div key={dayIdx} className={cn("border-r border-border/40 last:border-r-0 p-1 relative transition-colors select-none", isMaintenanceFacility && !matchingTt && !matchingBk
-                                ? "bg-red-950/15 cursor-pointer hover:bg-red-950/25"
+                                ? "bg-red-950/5 cursor-pointer hover:bg-red-950/15"
                                 : isPastCell && !matchingTt && !matchingBk
                                     ? "bg-surface-2/10 cursor-not-allowed opacity-60"
                                     : !matchingTt && !matchingBk
@@ -612,11 +621,11 @@ function CalendarView() {
                                   </div>
                                 </div>)}
 
-                              {/* 3. Empty Slot: Maintenance vs Past vs Future Bookable */}
+                              {/* 3. Empty Slot: Maintenance (Quiet Locked) vs Past vs Future Bookable */}
                               {!matchingTt && !matchingBk && (isMaintenanceFacility ? (
-                                  <div className="h-full w-full flex items-center justify-center p-1 bg-red-950/25 border border-dashed border-red-500/20 rounded">
-                                    <span className="text-[10px] text-red-400 font-medium flex items-center gap-1 select-none text-center">
-                                      <Wrench className="h-3 w-3 text-red-400 shrink-0"/> Under Maintenance
+                                  <div className="h-full w-full flex items-center justify-center select-none" title="Facility under maintenance — booking locked">
+                                    <span className="text-[10px] text-red-400/40 font-mono">
+                                      —
                                     </span>
                                   </div>
                                 ) : isPastCell ? (<div className="h-full w-full flex items-center justify-center">
