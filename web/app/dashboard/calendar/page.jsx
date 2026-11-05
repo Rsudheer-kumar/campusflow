@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "rea
 import { useSearchParams, useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus, Lock, CalendarCheck, Clock, Building2, Users, RefreshCw, Eye, Wrench, AlertTriangle, } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/layout";
-import { Card, Badge, Button, Select, Skeleton, EmptyState, ErrorState } from "@/components/ui";
+import { Card, Badge, Button, Select, Skeleton, EmptyState, ErrorState, Modal } from "@/components/ui";
 import { BookingModal } from "@/components/calendar/booking-modal";
 import { TimetableDetailModal } from "@/components/calendar/timetable-detail-modal";
 import { BookingDetailModal } from "@/components/calendar/booking-detail-modal";
