@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Plus, Lock, CalendarCheck, Clock, Building2, Users, RefreshCw, Eye, } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Lock, CalendarCheck, Clock, Building2, Users, RefreshCw, Eye, Wrench, AlertTriangle, } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/layout";
 import { Card, Badge, Button, Select, Skeleton, EmptyState, ErrorState } from "@/components/ui";
 import { BookingModal } from "@/components/calendar/booking-modal";
@@ -40,6 +40,7 @@ function CalendarView() {
     const [selectedTimetable, setSelectedTimetable] = useState(null);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [checkInModalBooking, setCheckInModalBooking] = useState(null);
+    const [maintenanceNoticeFacility, setMaintenanceNoticeFacility] = useState(null);
     // 1. Fetch Resources — runs ONCE on mount only.
     const initialResourceIdRef = useRef(null);
     const initialSlotHandledRef = useRef(false);
@@ -254,6 +255,10 @@ function CalendarView() {
     };
     // Open booking modal for a specific day and hour
     const handleOpenBooking = (dayDate, hour, currentTime) => {
+        if (activeResource?.status === "MAINTENANCE") {
+            setMaintenanceNoticeFacility(activeResource);
+            return;
+        }
         const start = new Date(dayDate);
         start.setUTCHours(hour, 0, 0, 0);
         const end = new Date(dayDate);
@@ -351,7 +356,7 @@ function CalendarView() {
             <div className="w-full md:w-80">
               <Select label="Selected Campus Facility" value={selectedResourceId} onChange={(e) => handleResourceChange(e.target.value)} options={resources.map((r) => ({
             value: r._id,
-            label: `${r.name} (${r.code}) — ${r.location?.building}`,
+            label: `${r.name} (${r.code}) — ${r.location?.building}${r.status === "MAINTENANCE" ? " ⚠️ [Under Maintenance]" : ""}`,
         }))} disabled={resources.length === 0}/>
             </div>
 
@@ -402,6 +407,11 @@ function CalendarView() {
                 <Building2 className="h-3.5 w-3.5 text-primary"/>
                 <span className="text-foreground font-medium">{activeResource.name}</span>
                 <span>({activeResource.code})</span>
+                {activeResource.status === "MAINTENANCE" && (
+                  <Badge variant="warning" className="bg-red-500/15 text-red-400 border border-red-500/30 text-[10px] font-semibold flex items-center gap-1">
+                    <Wrench className="h-3 w-3" /> Under Maintenance
+                  </Badge>
+                )}
               </div>
               <span>•</span>
               <div>
@@ -423,6 +433,19 @@ function CalendarView() {
                 </div>
               </div>
             </div>)}
+          {activeResource && activeResource.status === "MAINTENANCE" && (
+            <div className="mt-3 p-3.5 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-200 flex items-start gap-3">
+              <Wrench className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-red-300 block text-sm">
+                  Facility Under Maintenance
+                </span>
+                <p className="mt-0.5 text-red-200/90 leading-relaxed">
+                  <strong>{activeResource.name} ({activeResource.code})</strong> is currently closed for scheduled maintenance work. All time slots are locked and reservations cannot be booked at this time.
+                </p>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Schedule Grid Area */}
@@ -509,16 +532,22 @@ function CalendarView() {
                         const slotKey = slotStartUtc.toISOString().slice(0, 13);
                         const matchingTt = scheduleIndex.ttMap.get(slotKey) ?? null;
                         const matchingBk = scheduleIndex.bkMap.get(slotKey) ?? null;
-                        return (<div key={dayIdx} className={cn("border-r border-border/40 last:border-r-0 p-1 relative transition-colors select-none", isPastCell && !matchingTt && !matchingBk
-                                ? "bg-surface-2/10 cursor-not-allowed opacity-60"
-                                : !matchingTt && !matchingBk
-                                    ? "hover:bg-primary/5 cursor-pointer group"
-                                    : "cursor-pointer")} onClick={() => {
+                        const isMaintenanceFacility = activeResource?.status === "MAINTENANCE";
+                        return (<div key={dayIdx} className={cn("border-r border-border/40 last:border-r-0 p-1 relative transition-colors select-none", isMaintenanceFacility && !matchingTt && !matchingBk
+                                ? "bg-red-950/15 cursor-pointer hover:bg-red-950/25"
+                                : isPastCell && !matchingTt && !matchingBk
+                                    ? "bg-surface-2/10 cursor-not-allowed opacity-60"
+                                    : !matchingTt && !matchingBk
+                                        ? "hover:bg-primary/5 cursor-pointer group"
+                                        : "cursor-pointer")} onClick={() => {
                                 if (matchingTt) {
                                     setSelectedTimetable(matchingTt);
                                 }
                                 else if (matchingBk) {
                                     setSelectedBooking(matchingBk);
+                                }
+                                else if (isMaintenanceFacility) {
+                                    setMaintenanceNoticeFacility(activeResource);
                                 }
                                 else if (!isPastCell) {
                                     handleOpenBooking(dayDate, hour, Date.now());
@@ -583,8 +612,14 @@ function CalendarView() {
                                   </div>
                                 </div>)}
 
-                              {/* 3. Empty Slot: Past (Unbookable) vs Future (Bookable) */}
-                              {!matchingTt && !matchingBk && (isPastCell ? (<div className="h-full w-full flex items-center justify-center">
+                              {/* 3. Empty Slot: Maintenance vs Past vs Future Bookable */}
+                              {!matchingTt && !matchingBk && (isMaintenanceFacility ? (
+                                  <div className="h-full w-full flex items-center justify-center p-1 bg-red-950/25 border border-dashed border-red-500/20 rounded">
+                                    <span className="text-[10px] text-red-400 font-medium flex items-center gap-1 select-none text-center">
+                                      <Wrench className="h-3 w-3 text-red-400 shrink-0"/> Under Maintenance
+                                    </span>
+                                  </div>
+                                ) : isPastCell ? (<div className="h-full w-full flex items-center justify-center">
                                     <span className="text-[10px] text-muted/30 font-mono select-none">
                                       —
                                     </span>
@@ -622,18 +657,24 @@ function CalendarView() {
                 const slotKey = cellStartUtc.toISOString().slice(0, 13);
                 const matchingTt = scheduleIndex.ttMap.get(slotKey) ?? null;
                 const matchingBk = scheduleIndex.bkMap.get(slotKey) ?? null;
+                const isMaintenanceFacility = activeResource?.status === "MAINTENANCE";
                 return (<div key={hour} className={cn("p-3 rounded-[var(--radius-md)] border flex items-center justify-between gap-4 transition-colors", matchingTt
                         ? "bg-primary/10 border-primary/40 text-foreground cursor-pointer hover:border-primary/80"
                         : matchingBk
                             ? "bg-emerald-500/10 border-emerald-500/30 text-foreground cursor-pointer hover:border-emerald-400"
-                            : isPastCell
-                                ? "bg-surface-2/10 border-border/40 opacity-60 cursor-not-allowed"
-                                : "bg-surface border-border/60 hover:border-primary/40")} onClick={() => {
+                            : isMaintenanceFacility
+                                ? "bg-red-950/15 border-red-500/30 text-foreground cursor-pointer hover:bg-red-950/25"
+                                : isPastCell
+                                    ? "bg-surface-2/10 border-border/40 opacity-60 cursor-not-allowed"
+                                    : "bg-surface border-border/60 hover:border-primary/40")} onClick={() => {
                         if (matchingTt) {
                             setSelectedTimetable(matchingTt);
                         }
                         else if (matchingBk) {
                             setSelectedBooking(matchingBk);
+                        }
+                        else if (isMaintenanceFacility) {
+                            setMaintenanceNoticeFacility(activeResource);
                         }
                     }}>
                       <div className="flex items-center gap-3">
@@ -670,12 +711,25 @@ function CalendarView() {
                           </div>)}
 
                         {!matchingTt && !matchingBk && (<div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-muted">
-                              {isPastCell ? "Past time slot" : "Available for booking"}
-                            </span>
-                            <Badge variant={isPastCell ? "neutral" : "available"}>
-                              {isPastCell ? "Expired" : "Open"}
-                            </Badge>
+                            {isMaintenanceFacility ? (
+                              <>
+                                <span className="text-sm font-medium text-red-400 flex items-center gap-1.5">
+                                  <Wrench className="h-4 w-4" /> Under Maintenance
+                                </span>
+                                <Badge variant="warning" className="bg-red-500/15 text-red-400 border border-red-500/30">
+                                  Not Bookable
+                                </Badge>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-sm font-medium text-muted">
+                                  {isPastCell ? "Past time slot" : "Available for booking"}
+                                </span>
+                                <Badge variant={isPastCell ? "neutral" : "available"}>
+                                  {isPastCell ? "Expired" : "Open"}
+                                </Badge>
+                              </>
+                            )}
                           </div>)}
                       </div>
 
@@ -690,6 +744,8 @@ function CalendarView() {
                             setSelectedBooking(matchingBk);
                         }} className="text-xs text-emerald-400">
                             <Eye className="h-3.5 w-3.5 mr-1"/> View Booking
+                          </Button>) : isMaintenanceFacility ? (<Button size="sm" variant="secondary" onClick={() => setMaintenanceNoticeFacility(activeResource)} className="text-xs text-red-400 border-red-500/30 hover:bg-red-500/10">
+                            <Wrench className="h-3.5 w-3.5 mr-1"/> Under Maintenance
                           </Button>) : isPastCell ? (<Button size="sm" variant="secondary" disabled className="text-xs opacity-50">
                             Unbookable
                           </Button>) : (<Button size="sm" variant="secondary" onClick={() => handleOpenBooking(selectedDate, hour, Date.now())}>
@@ -710,6 +766,37 @@ function CalendarView() {
 
         {/* Phase 3.3 Check-In Modal */}
         <CheckInModal open={!!checkInModalBooking} onClose={() => setCheckInModalBooking(null)} booking={checkInModalBooking} onSuccess={loadScheduleData}/>
+
+        {/* Facility Under Maintenance Notice Modal */}
+        <Modal
+          open={!!maintenanceNoticeFacility}
+          onClose={() => setMaintenanceNoticeFacility(null)}
+          title="Facility Under Maintenance"
+          description={`Maintenance Lock: ${maintenanceNoticeFacility?.name || "Facility"}`}
+          size="md"
+        >
+          <div className="py-6 px-4 text-center space-y-4">
+            <div className="mx-auto h-12 w-12 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400">
+              <Wrench className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Cannot Book: Facility Under Maintenance
+              </h3>
+              <p className="text-sm text-muted mt-2 leading-relaxed max-w-sm mx-auto">
+                <strong>{maintenanceNoticeFacility?.name} ({maintenanceNoticeFacility?.code})</strong> is currently closed for scheduled maintenance work. You cannot book this facility while maintenance is active.
+              </p>
+              <p className="text-xs text-muted/80 mt-2">
+                Please select another campus facility or wait until campus administration reactivates it.
+              </p>
+            </div>
+            <div className="pt-3 flex justify-center">
+              <Button variant="secondary" onClick={() => setMaintenanceNoticeFacility(null)}>
+                Understood
+              </Button>
+            </div>
+          </div>
+        </Modal>
 
         {/* Booking Creation Modal */}
         <BookingModal open={isModalOpen} onClose={() => setIsModalOpen(false)} resource={activeResource} initialStartAt={modalSlot?.start} initialEndAt={modalSlot?.end} onSuccess={handleBookingSuccess}/>

@@ -5,7 +5,7 @@ import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Clock, Building2, ShieldCheck } from "lucide-react";
+import { AlertCircle, Clock, Building2, ShieldCheck, Wrench } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { resolveReservationTimezone } from "@/lib/utils";
 function getInitialValues(initialStartAt, initialEndAt) {
@@ -38,6 +38,30 @@ function getInitialValues(initialStartAt, initialEndAt) {
 }
 
 function BookingModalContent({ open, onClose, resource, initialStartAt, initialEndAt, onSuccess, }) {
+    if (resource?.status === "MAINTENANCE") {
+        return (
+            <Modal open={open} onClose={onClose} title="Facility Under Maintenance" description={`Maintenance lock on ${resource.name} (${resource.code})`} size="md">
+                <div className="py-6 px-4 text-center space-y-4">
+                    <div className="mx-auto h-12 w-12 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400">
+                        <Wrench className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-base font-semibold text-foreground">
+                            Facility Currently Under Maintenance
+                        </h3>
+                        <p className="text-sm text-muted mt-1.5 leading-relaxed max-w-sm mx-auto">
+                            <strong>{resource.name} ({resource.code})</strong> is currently undergoing scheduled maintenance. Reservations cannot be booked until maintenance is completed.
+                        </p>
+                    </div>
+                    <div className="pt-2 flex justify-center">
+                        <Button variant="secondary" onClick={onClose}>
+                            Close
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+        );
+    }
     const [initial] = useState(() => getInitialValues(initialStartAt, initialEndAt));
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
