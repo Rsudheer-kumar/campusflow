@@ -433,28 +433,6 @@ function CalendarView() {
                 </div>
               </div>
             </div>)}
-          {activeResource && activeResource.status === "MAINTENANCE" && (
-            <div className="mt-4 p-5 rounded-xl bg-gradient-to-r from-red-950/60 via-red-900/30 to-surface-2/60 border-2 border-red-500/50 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0 shadow-inner">
-                  <Wrench className="h-6 w-6 text-red-400" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="font-bold text-red-300 text-base md:text-lg tracking-wide uppercase">
-                      Facility Under Maintenance
-                    </span>
-                    <Badge variant="warning" className="bg-red-500/20 text-red-300 border-red-500/40 text-xs font-bold uppercase tracking-wider px-2 py-0.5">
-                      All Time Slots Locked
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-xs md:text-sm text-red-200/90 leading-relaxed">
-                    <strong>{activeResource.name} ({activeResource.code})</strong> is currently closed for scheduled maintenance work. Online booking is temporarily disabled across all days and times until reactivated.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </Card>
 
         {/* Schedule Grid Area */}
@@ -482,8 +460,34 @@ function CalendarView() {
                 </Button>}/>
           </Card>) : resources.length === 0 ? (<Card className="min-h-[350px] flex items-center justify-center">
             <EmptyState icon={<Building2 className="h-8 w-8 text-primary"/>} title="No Facilities Available" description="There are currently no campus facilities or laboratories registered in the institutional catalogue."/>
-          </Card>) : viewMode === "week" ? (
-        /* ─── WEEK VIEW GRID ─── */
+          </Card>) : (
+          <div className="space-y-4">
+            {/* BIG PROMINENT HEADER: Facility Under Maintenance */}
+            {activeResource && activeResource.status === "MAINTENANCE" && (
+    <div className="p-5 md:p-6 rounded-2xl bg-gradient-to-r from-red-950/90 via-red-900/60 to-red-950/90 border-2 border-red-500/80 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-red-500/20 border-2 border-red-500/50 flex items-center justify-center text-red-400 shrink-0 shadow-inner">
+                <Wrench className="h-7 w-7 text-red-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="font-extrabold text-red-200 text-lg md:text-2xl tracking-wide uppercase">
+                    FACILITY UNDER MAINTENANCE
+                  </h2>
+                  <Badge variant="warning" className="bg-red-500/30 text-red-200 border-red-400 text-xs font-bold uppercase tracking-wider px-3 py-1">
+                    ONLINE BOOKING PAUSED
+                  </Badge>
+                </div>
+                <p className="mt-1.5 text-sm md:text-base text-red-200/90 leading-relaxed max-w-3xl">
+                  <strong>{activeResource.name} ({activeResource.code})</strong> is temporarily closed for maintenance work. All dates and time slots in this calendar are locked and cannot be booked until reactivated by campus administration.
+                </p>
+              </div>
+            </div>
+          </div>
+            )}
+
+            {viewMode === "week" ? (
+            /* ─── WEEK VIEW GRID ─── */
         <div className="space-y-2">
             <Card className="overflow-x-auto p-0 border-border" noPadding>
               <div className="min-w-[850px]">
@@ -721,14 +725,9 @@ function CalendarView() {
 
                         {!matchingTt && !matchingBk && (<div className="flex items-center gap-2">
                             {isMaintenanceFacility ? (
-                              <>
-                                <span className="text-sm font-medium text-red-400 flex items-center gap-1.5">
-                                  <Wrench className="h-4 w-4" /> Under Maintenance
-                                </span>
-                                <Badge variant="warning" className="bg-red-500/15 text-red-400 border border-red-500/30">
-                                  Not Bookable
-                                </Badge>
-                              </>
+                              <span className="text-xs text-red-400/50 font-mono">
+                                —
+                              </span>
                             ) : (
                               <>
                                 <span className="text-sm font-medium text-muted">
@@ -753,8 +752,8 @@ function CalendarView() {
                             setSelectedBooking(matchingBk);
                         }} className="text-xs text-emerald-400">
                             <Eye className="h-3.5 w-3.5 mr-1"/> View Booking
-                          </Button>) : isMaintenanceFacility ? (<Button size="sm" variant="secondary" onClick={() => setMaintenanceNoticeFacility(activeResource)} className="text-xs text-red-400 border-red-500/30 hover:bg-red-500/10">
-                            <Wrench className="h-3.5 w-3.5 mr-1"/> Under Maintenance
+                          </Button>) : isMaintenanceFacility ? (<Button size="sm" variant="secondary" onClick={() => setMaintenanceNoticeFacility(activeResource)} className="text-xs text-red-400/60 border-red-500/20 hover:bg-red-500/10 hover:text-red-300">
+                            <Lock className="h-3.5 w-3.5 mr-1"/> Slot Locked
                           </Button>) : isPastCell ? (<Button size="sm" variant="secondary" disabled className="text-xs opacity-50">
                             Unbookable
                           </Button>) : (<Button size="sm" variant="secondary" onClick={() => handleOpenBooking(selectedDate, hour, Date.now())}>
@@ -765,7 +764,10 @@ function CalendarView() {
             })}
               </div>
             </Card>
-          </div>)}
+          </div>
+        )}
+      </div>
+    )}
 
         {/* Timetable Class Detail Modal */}
         <TimetableDetailModal open={!!selectedTimetable} onClose={() => setSelectedTimetable(null)} entry={selectedTimetable} resource={activeResource}/>
