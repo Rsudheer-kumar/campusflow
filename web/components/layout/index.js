@@ -8,3 +8,4 @@ export { MobileSidebar } from "./mobile-sidebar";
 export { SidebarContent } from "./sidebar-content";
 export { NavItem } from "./nav-item";
 export { UserMenu } from "./user-menu";
+export { AuthGuard } from "./auth-guard";

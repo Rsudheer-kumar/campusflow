@@ -73,8 +73,9 @@ export function CampusScene({
 
       <WebGLErrorBoundary fallback={<SceneFallback />}>
         <Canvas
-          shadows="percentage"
-          dpr={[1, 1.5]}
+          shadows
+          gl={{ powerPreference: "high-performance", antialias: true, stencil: false }}
+          dpr={[1, 1.25]}
           camera={{ position: [24, 15, 30], fov: 42 }}
           style={{
             width: "100%",

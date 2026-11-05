@@ -15,8 +15,8 @@ const fadeUp = {
     })
 };
 // Reusable viewport configurations for repeated animations
-const viewPortConfig = { once: false, amount: 0.2, margin: "0px" };
-const viewPortReveal = { once: false, amount: 0.3, margin: "0px" };
+const viewPortConfig = { once: true, amount: 0.15, margin: "0px" };
+const viewPortReveal = { once: true, amount: 0.15, margin: "0px" };
 export default function LandingPage() {
     return (<div className="min-h-screen bg-[#050816] text-[#F8FAFC] selection:bg-[#4F8CFF]/30 overflow-x-hidden">
       <LandingNavbar />
@@ -51,7 +51,7 @@ export default function LandingPage() {
               </motion.p>
 
               <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp} className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto pointer-events-auto">
-                <Link href="/dashboard" className="w-full sm:w-auto">
+                <Link href="/signin?tab=register" className="w-full sm:w-auto">
                   <Button size="lg" variant="primary" className="group h-14 px-8 text-base shadow-[0_0_30px_rgba(79,140,255,0.25)] w-full w-full">
                     Explore Campus
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1"/>
@@ -196,7 +196,7 @@ export default function LandingPage() {
               <p className="text-lg md:text-xl text-muted max-w-2xl mx-auto mb-10">
                 Deploy a scalable space management system designed to prevent conflicts, maximize utilization, and provide visibility across all university facilities.
               </p>
-              <Link href="/dashboard">
+              <Link href="/signin?tab=register">
                 <Button size="lg" variant="primary" className="h-14 px-10 text-lg shadow-[0_4px_20px_rgba(79,140,255,0.4)] group">
                   Enter Campus Digital Twin
                   <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1"/>

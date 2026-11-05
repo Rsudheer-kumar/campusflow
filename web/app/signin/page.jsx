@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, AlertCircle, Sparkles, UserPlus, LogIn, CheckCircle2, ShieldCheck, KeyRound } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Select } from "@/components/ui";
 import { api, setStoredAccessToken, setStoredUser } from "@/lib/api";
@@ -51,9 +51,11 @@ const DEMO_ACCOUNTS = [
   },
 ];
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("signin"); // "signin" | "register"
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "register" || searchParams.get("tab") === "signup" ? "register" : "signin";
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   // Sign In state
   const [email, setEmail] = useState("");
@@ -424,5 +426,19 @@ export default function SignInPage() {
         &copy; {new Date().getFullYear()} CampusFlow Academic Platform. Enterprise RBAC & MongoDB replication enabled.
       </p>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#050816] flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      }
+    >
+      <SignInForm />
+    </Suspense>
   );
 }

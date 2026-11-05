@@ -1,4 +1,4 @@
-import { AppLayout } from "@/components/layout";
+import { AppLayout, AuthGuard } from "@/components/layout";
 import { AuthProvider } from "@/lib/auth";
 export const metadata = {
     title: "Dashboard",
@@ -6,6 +6,8 @@ export const metadata = {
 };
 export default function DashboardLayout({ children, }) {
     return (<AuthProvider>
-      <AppLayout>{children}</AppLayout>
+      <AuthGuard>
+        <AppLayout>{children}</AppLayout>
+      </AuthGuard>
     </AuthProvider>);
 }

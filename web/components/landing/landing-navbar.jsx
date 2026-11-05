@@ -54,7 +54,7 @@ export function LandingNavbar() {
           <Link href="/signin" className="text-sm font-medium text-white/70 hover:text-white transition-colors drop-shadow-sm">
             Sign In
           </Link>
-          <Link href="/dashboard">
+          <Link href="/signin?tab=register">
             <Button size="sm" variant="primary" className="group shadow-[0_4px_14px_0_rgba(79,140,255,0.39)]">
               Explore Campus
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"/>
@@ -77,7 +77,7 @@ export function LandingNavbar() {
           <Link href="/signin" className="text-sm font-medium text-white py-2" onClick={() => setMobileMenuOpen(false)}>
             Sign In
           </Link>
-          <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+          <Link href="/signin?tab=register" onClick={() => setMobileMenuOpen(false)}>
             <Button size="sm" variant="primary" className="w-full">
               Explore Campus
             </Button>
