@@ -532,6 +532,52 @@ export default function ResourcesPage() {
                 resource.photos?.find((p) => p.isPrimary) ||
                 resource.photos?.[0];
 
+              // Derive placeholder theme from resource type code
+              const resourceCode = (resource.resourceType?.code || resource.code || "").toUpperCase();
+              const placeholderTheme = resourceCode.startsWith("LAB")
+                ? { bg: "#0d1b2a", accent: "#00b4d8", accent2: "#0077b6", label: "Laboratory", icon: "LAB" }
+                : resourceCode.startsWith("LH")
+                ? { bg: "#1a0a2e", accent: "#a855f7", accent2: "#7c3aed", label: "Lecture Hall", icon: "LH" }
+                : resourceCode.startsWith("SEM")
+                ? { bg: "#0a2318", accent: "#10b981", accent2: "#059669", label: "Seminar Room", icon: "SEM" }
+                : resourceCode.startsWith("AUD")
+                ? { bg: "#1f1200", accent: "#f59e0b", accent2: "#d97706", label: "Auditorium", icon: "AUD" }
+                : { bg: "#111827", accent: "#6b7280", accent2: "#4b5563", label: "Facility", icon: "FAC" };
+
+              const ResourcePlaceholder = () => (
+                <div className="relative h-36 w-full rounded-md overflow-hidden border border-border/40" style={{ background: placeholderTheme.bg }}>
+                  <svg width="100%" height="100%" viewBox="0 0 400 144" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <radialGradient id={`rg-${resource._id}`} cx="30%" cy="40%" r="60%">
+                        <stop offset="0%" stopColor={placeholderTheme.accent} stopOpacity="0.25" />
+                        <stop offset="100%" stopColor={placeholderTheme.bg} stopOpacity="0" />
+                      </radialGradient>
+                      <pattern id={`grid-${resource._id}`} width="24" height="24" patternUnits="userSpaceOnUse">
+                        <path d="M 24 0 L 0 0 0 24" fill="none" stroke={placeholderTheme.accent} strokeOpacity="0.08" strokeWidth="0.5" />
+                      </pattern>
+                    </defs>
+                    {/* Grid background */}
+                    <rect width="400" height="144" fill={`url(#grid-${resource._id})`} />
+                    {/* Glow */}
+                    <rect width="400" height="144" fill={`url(#rg-${resource._id})`} />
+                    {/* Decorative arcs */}
+                    <circle cx="60" cy="72" r="80" fill="none" stroke={placeholderTheme.accent} strokeOpacity="0.12" strokeWidth="1" />
+                    <circle cx="60" cy="72" r="55" fill="none" stroke={placeholderTheme.accent} strokeOpacity="0.1" strokeWidth="1" />
+                    {/* Centre icon block */}
+                    <rect x="168" y="44" width="64" height="56" rx="10" fill={placeholderTheme.accent} fillOpacity="0.15" stroke={placeholderTheme.accent} strokeOpacity="0.4" strokeWidth="1.5" />
+                    <text x="200" y="77" textAnchor="middle" dominantBaseline="middle" fontFamily="monospace" fontWeight="bold" fontSize="13" fill={placeholderTheme.accent} fillOpacity="0.9">{placeholderTheme.icon}</text>
+                    {/* Bottom label */}
+                    <rect x="0" y="118" width="400" height="26" fill="#000" fillOpacity="0.45" />
+                    <text x="200" y="131" textAnchor="middle" dominantBaseline="middle" fontFamily="system-ui, sans-serif" fontSize="11" fill={placeholderTheme.accent} fillOpacity="0.9">{placeholderTheme.label} · {resource.name}</text>
+                    {/* Corner dots */}
+                    <circle cx="12" cy="12" r="2.5" fill={placeholderTheme.accent} fillOpacity="0.3" />
+                    <circle cx="388" cy="12" r="2.5" fill={placeholderTheme.accent} fillOpacity="0.3" />
+                    <circle cx="12" cy="132" r="2.5" fill={placeholderTheme.accent} fillOpacity="0.3" />
+                    <circle cx="388" cy="132" r="2.5" fill={placeholderTheme.accent} fillOpacity="0.3" />
+                  </svg>
+                </div>
+              );
+
               return (
                 <Card
                   key={resource._id}
@@ -546,6 +592,7 @@ export default function ResourcesPage() {
                           src={primaryPhoto.url}
                           alt={primaryPhoto.caption || resource.name}
                           className="h-full w-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement.setAttribute("data-err","1"); }}
                         />
                         {primaryPhoto.caption && (
                           <div className="absolute bottom-0 inset-x-0 bg-black/60 px-2 py-1 text-[11px] text-white truncate backdrop-blur-xs">
@@ -554,10 +601,7 @@ export default function ResourcesPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="h-24 w-full rounded-md bg-surface-2/60 border border-dashed border-border/60 flex items-center justify-center text-muted gap-2 text-xs">
-                        <ImageIcon className="h-4 w-4" />
-                        <span>No image provided</span>
-                      </div>
+                      <ResourcePlaceholder />
                     )}
 
                     {/* Top Bar: Code & Status */}
