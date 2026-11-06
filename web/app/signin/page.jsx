@@ -338,6 +338,7 @@ function SignInForm() {
                   id="regName"
                   name="regName"
                   type="text"
+                  autoComplete="name"
                   required
                   placeholder="e.g. Jordan Smith"
                   value={regName}
@@ -352,6 +353,7 @@ function SignInForm() {
                   id="regEmail"
                   name="regEmail"
                   type="email"
+                  autoComplete="email"
                   required
                   placeholder="jordan.smith@campusflow.edu"
                   value={regEmail}
@@ -382,6 +384,7 @@ function SignInForm() {
                     id="regDepartment"
                     name="regDepartment"
                     type="text"
+                    autoComplete="organization"
                     placeholder="e.g. Computer Science"
                     value={regDepartment}
                     onChange={(e) => setRegDepartment(e.target.value)}
@@ -396,6 +399,7 @@ function SignInForm() {
                   id="regPassword"
                   name="regPassword"
                   type="password"
+                  autoComplete="new-password"
                   required
                   placeholder="CampusFlow@2026!"
                   value={regPassword}

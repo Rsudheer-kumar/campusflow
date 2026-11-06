@@ -86,7 +86,7 @@ export function LandingScene() {
         >
           {isMounted && (
             <Canvas
-              shadows
+              shadows="percentage"
               dpr={[1, 1.25]}
               gl={{
                 powerPreference: "high-performance",
