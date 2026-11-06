@@ -553,13 +553,26 @@ export function CampusWorkspace({
                               <ArrowRight className="h-3 w-3" />
                             </Link>
                           ) : (
-                            <span className="text-[11px] text-slate-400 italic">
-                              {r.availability?.visualStatus === "occupied"
-                                ? "Occupied for window"
-                                : r.availability?.visualStatus === "maintenance"
-                                ? "Under Maintenance"
-                                : "Unavailable"}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="text-[11px] text-slate-400 italic"
+                                title={r.availability?.message || statusMeta.description}
+                              >
+                                {r.availability?.visualStatus === "occupied"
+                                  ? "Occupied for window"
+                                  : r.availability?.visualStatus === "maintenance"
+                                  ? "Under Maintenance"
+                                  : r.availability?.reason === "TIMETABLE_CONFLICT"
+                                  ? "Curriculum Class"
+                                  : (r.availability?.message || "Unavailable")}
+                              </span>
+                              <Link
+                                href={`/dashboard/calendar?resourceId=${r.code}&date=${encodeURIComponent(queryInterval.startAt)}`}
+                                className="text-[11px] text-blue-400 hover:text-blue-300 underline font-medium"
+                              >
+                                Schedule
+                              </Link>
+                            </div>
                           )}
                         </div>
                       </div>

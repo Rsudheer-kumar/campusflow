@@ -881,7 +881,7 @@ export default function DashboardPage() {
                               {b.status}
                             </Badge>
                             <Link
-                              href={`/dashboard/calendar?resourceId=${resObj?._id || b.resource}&startAt=${b.startAt}&endAt=${b.endAt}`}
+                              href={`/dashboard/calendar?resourceId=${resObj?._id || (typeof b.resource === "object" ? b.resource?._id : b.resource)}&date=${b.startAt}`}
                             >
                               <Button size="sm" variant="secondary" className="text-xs">
                                 View Slot
@@ -1016,7 +1016,7 @@ export default function DashboardPage() {
                             </Badge>
 
                             <Link
-                              href={`/dashboard/calendar?resourceId=${resObj?._id || b.resource}&startAt=${b.startAt}&endAt=${b.endAt}`}
+                              href={`/dashboard/calendar?resourceId=${resObj?._id || (typeof b.resource === "object" ? b.resource?._id : b.resource)}&date=${b.startAt}`}
                             >
                               <Button size="sm" variant="secondary" className="text-xs">
                                 Calendar

@@ -7,31 +7,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Clock, Building2, ShieldCheck, Wrench } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
-import { resolveReservationTimezone } from "@/lib/utils";
-function getInitialValues(initialStartAt, initialEndAt) {
+import { resolveReservationTimezone, localToUtc, utcToLocalParts } from "@/lib/utils";
+function getInitialValues(initialStartAt, initialEndAt, tz = "UTC") {
     if (initialStartAt && initialEndAt) {
-        const s = new Date(initialStartAt);
-        const e = new Date(initialEndAt);
-        const yyyy = s.getUTCFullYear();
-        const mm = String(s.getUTCMonth() + 1).padStart(2, "0");
-        const dd = String(s.getUTCDate()).padStart(2, "0");
-        const sH = String(s.getUTCHours()).padStart(2, "0");
-        const sM = String(s.getUTCMinutes()).padStart(2, "0");
-        const eH = String(e.getUTCHours()).padStart(2, "0");
-        const eM = String(e.getUTCMinutes()).padStart(2, "0");
+        const sParts = utcToLocalParts(initialStartAt, tz);
+        const eParts = utcToLocalParts(initialEndAt, tz);
         return {
-            date: `${yyyy}-${mm}-${dd}`,
-            startTime: `${sH}:${sM}`,
-            endTime: `${eH}:${eM}`,
+            date: sParts.date,
+            startTime: sParts.time,
+            endTime: eParts.time,
         };
     }
-    const now = new Date();
-    const yyyy = now.getUTCFullYear();
-    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-    const dd = String(now.getUTCDate()).padStart(2, "0");
-    const nextHour = Math.min(20, Math.max(8, now.getUTCHours() + 1));
+    const nowParts = utcToLocalParts(new Date(), tz);
+    const [nowH] = (nowParts.time || "08:00").split(":").map(Number);
+    const nextHour = Math.min(20, Math.max(8, (nowH || 8) + 1));
     return {
-        date: `${yyyy}-${mm}-${dd}`,
+        date: nowParts.date,
         startTime: `${String(nextHour).padStart(2, "0")}:00`,
         endTime: `${String(Math.min(21, nextHour + 1)).padStart(2, "0")}:00`,
     };
@@ -62,7 +53,9 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
             </Modal>
         );
     }
-    const [initial] = useState(() => getInitialValues(initialStartAt, initialEndAt));
+    const targetTz = resolveReservationTimezone(resource);
+    const tzLabel = targetTz ? targetTz.split("/").pop().replace(/_/g, " ") : "Local";
+    const [initial] = useState(() => getInitialValues(initialStartAt, initialEndAt, targetTz));
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [date, setDate] = useState(initial.date);
@@ -81,11 +74,8 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
         setConflictError(null);
         setIsSubmitting(true);
         try {
-            const [sH, sM] = startTime.split(":").map(Number);
-            const [eH, eM] = endTime.split(":").map(Number);
-            const [y, m, d] = date.split("-").map(Number);
-            const startAtDate = new Date(Date.UTC(y, m - 1, d, sH, sM, 0, 0));
-            const endAtDate = new Date(Date.UTC(y, m - 1, d, eH, eM, 0, 0));
+            const startAtDate = localToUtc(date, startTime, targetTz);
+            const endAtDate = localToUtc(date, endTime, targetTz);
             if (startAtDate >= endAtDate) {
                 setConflictError({
                     code: "INVALID_INTERVAL",
@@ -110,7 +100,7 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
                 description: description.trim() || undefined,
                 startAt: startAtDate.toISOString(),
                 endAt: endAtDate.toISOString(),
-                timezone: resolveReservationTimezone(resource),
+                timezone: targetTz,
             });
             onSuccess(res.booking);
             handleClose();
@@ -215,9 +205,9 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Date" type="date" required value={date} onChange={(e) => setDate(e.target.value)}/>
 
-            <Input label="Start Time (UTC)" type="time" required step="1800" value={startTime} onChange={(e) => setStartTime(e.target.value)}/>
+            <Input label={`Start Time (${tzLabel})`} type="time" required step="1800" value={startTime} onChange={(e) => setStartTime(e.target.value)}/>
 
-            <Input label="End Time (UTC)" type="time" required step="1800" value={endTime} onChange={(e) => setEndTime(e.target.value)}/>
+            <Input label={`End Time (${tzLabel})`} type="time" required step="1800" value={endTime} onChange={(e) => setEndTime(e.target.value)}/>
           </div>
 
           {/* Description */}

@@ -9,7 +9,7 @@ import { TimetableDetailModal } from "@/components/calendar/timetable-detail-mod
 import { BookingDetailModal } from "@/components/calendar/booking-detail-modal";
 import { CheckInModal } from "@/components/bookings/check-in-modal";
 import { api, } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, resolveReservationTimezone, localToUtc, utcToLocalParts } from "@/lib/utils";
 function CalendarView() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -17,7 +17,7 @@ function CalendarView() {
     const [resources, setResources] = useState([]);
     const [selectedResourceId, setSelectedResourceId] = useState("");
     const [selectedDate, setSelectedDate] = useState(() => {
-        const qStart = searchParams.get("startAt");
+        const qStart = searchParams.get("date") || searchParams.get("startAt");
         if (qStart) {
             const parsed = new Date(qStart);
             if (!isNaN(parsed.getTime())) {
@@ -111,8 +111,9 @@ function CalendarView() {
                     setIsLoading(false);
                 }
 
-                // If a valid slot interval was supplied via query params, prefill and open booking modal
-                if (initialSlot && !initialSlotHandledRef.current) {
+                // Only prefill and open booking modal if explicitly instructed (e.g. from a Book Slot button)
+                const shouldOpenModal = searchParams.get("book") === "true" || searchParams.get("action") === "book";
+                if (initialSlot && shouldOpenModal && !initialSlotHandledRef.current) {
                     initialSlotHandledRef.current = true;
                     setModalSlot(initialSlot);
                     setIsModalOpen(true);
@@ -253,16 +254,18 @@ function CalendarView() {
         setIsLoading(true);
         setSelectedDate(new Date());
     };
-    // Open booking modal for a specific day and hour
+    // Open booking modal for a specific day and hour (hour is in facility local timezone)
     const handleOpenBooking = (dayDate, hour, currentTime) => {
         if (activeResource?.status === "MAINTENANCE") {
             setMaintenanceNoticeFacility(activeResource);
             return;
         }
-        const start = new Date(dayDate);
-        start.setUTCHours(hour, 0, 0, 0);
-        const end = new Date(dayDate);
-        end.setUTCHours(hour + 1, 0, 0, 0);
+        const dayDateStr = new Intl.DateTimeFormat("en-CA", {
+            timeZone: facilityTz,
+            year: "numeric", month: "2-digit", day: "2-digit",
+        }).format(dayDate);
+        const start = localToUtc(dayDateStr, `${String(hour).padStart(2, "0")}:00`, facilityTz);
+        const end = localToUtc(dayDateStr, `${String(hour + 1).padStart(2, "0")}:00`, facilityTz);
         // If attempting to open a slot strictly in the past, refuse action
         if (end.getTime() <= currentTime) {
             return;
@@ -288,8 +291,69 @@ function CalendarView() {
         setIsRefreshing(true);
         loadScheduleData();
     };
-    // Operating hours (08:00 to 20:00 UTC)
+    // Operating hours (08:00 to 20:00 in facility local timezone)
+    const facilityTz = useMemo(() => resolveReservationTimezone(activeResource), [activeResource]);
+    // Local hours 08:00 – 19:00 displayed in the grid
     const hours = Array.from({ length: 12 }, (_, i) => i + 8);
+
+    /**
+     * Convert a local {date, hour} pair in facilityTz → UTC Date.
+     * We build a local-time string "YYYY-MM-DDTHH:00:00" in the facility
+     * timezone and parse it via Intl so it correctly accounts for the UTC offset.
+     */
+    function localHourToUtc(dayDate, localHour) {
+        // Format the reference day in the facility timezone to get the correct calendar date
+        const localDateStr = new Intl.DateTimeFormat("en-CA", {
+            timeZone: facilityTz,
+            year: "numeric", month: "2-digit", day: "2-digit",
+        }).format(dayDate); // e.g. "2026-11-07"
+        // Build an ISO-like string interpreted in facilityTz
+        const localIso = `${localDateStr}T${String(localHour).padStart(2, "0")}:00:00`;
+        // Use a temporary Date parsed in facilityTz via Intl trick
+        const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: facilityTz,
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+        }).formatToParts(new Date(localIso + " UTC")); // rough, corrected below
+        // Proper conversion: offset = facilityTz offset from UTC in minutes
+        // Parse the localIso as UTC then adjust by the actual offset
+        const naiveUtc = new Date(localIso + "Z");
+        const tzOffset = getTimezoneOffsetMinutes(facilityTz, naiveUtc);
+        return new Date(naiveUtc.getTime() - tzOffset * 60000);
+    }
+
+    /**
+     * Returns the UTC-offset of a timezone at a given UTC date, in minutes.
+     * Positive = east of UTC (e.g. Asia/Calcutta = +330).
+     */
+    function getTimezoneOffsetMinutes(tz, utcDate) {
+        const local = new Intl.DateTimeFormat("en-US", {
+            timeZone: tz,
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+        }).formatToParts(utcDate);
+        const get = (type) => parseInt(local.find(p => p.type === type)?.value ?? "0", 10);
+        const localAsUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour") === 24 ? 0 : get("hour"), get("minute"), get("second"));
+        return Math.round((localAsUtc - utcDate.getTime()) / 60000);
+    }
+
+    /**
+     * Given a UTC ISO string, return the local hour in facilityTz as a number.
+     */
+    function utcToLocalHour(isoString) {
+        const d = new Date(isoString);
+        const h = new Intl.DateTimeFormat("en-US", { timeZone: facilityTz, hour: "2-digit", hour12: false }).format(d);
+        return parseInt(h, 10);
+    }
+
+    /**
+     * Build a slot key (YYYY-MM-DDTHH in UTC) for a given local hour on a given day.
+     */
+    function localHourToSlotKey(dayDate, localHour) {
+        const utcDate = localHourToUtc(dayDate, localHour);
+        return utcDate.toISOString().slice(0, 13);
+    }
+
     const monthYearLabel = useMemo(() => {
         const options = { month: "short", year: "numeric", timeZone: "UTC" };
         return new Intl.DateTimeFormat("en-US", options).format(selectedDate);
@@ -494,7 +558,7 @@ function CalendarView() {
                 {/* Day Header Row */}
                 <div className="grid grid-cols-8 border-b border-border bg-surface-2/70 text-xs font-semibold text-foreground">
                   <div className="p-3 text-center border-r border-border/60 text-muted uppercase tracking-wider text-[11px]">
-                    UTC Time
+                    {facilityTz ? facilityTz.split("/").pop().replace(/_/g, " ") : "Local"} Time
                   </div>
                   {weekDays.map((d, i) => {
                 const dayStr = d.toISOString().slice(0, 10);
@@ -525,7 +589,7 @@ function CalendarView() {
                 {/* Hourly Rows */}
                 <div className="divide-y divide-border/40">
                   {hours.map((hour) => {
-                const timeLabel = `${String(hour).padStart(2, "0")}:00`;
+const timeLabel = `${String(hour).padStart(2, "0")}:00`; // hour is already in facility local timezone
                 return (<div key={hour} className="grid grid-cols-8 min-h-[64px]">
                         {/* Hour Label */}
                         <div className="p-2 border-r border-border/60 text-[11px] font-mono text-muted text-center flex items-center justify-center bg-surface-2/20">
@@ -534,17 +598,17 @@ function CalendarView() {
 
                         {/* 7 Day Columns */}
                         {weekDays.map((dayDate, dayIdx) => {
-                        const slotStartUtc = new Date(dayDate);
-                        slotStartUtc.setUTCHours(hour, 0, 0, 0);
-                        const slotEndUtc = new Date(dayDate);
-                        slotEndUtc.setUTCHours(hour + 1, 0, 0, 0);
+                        const dayDateStr = new Intl.DateTimeFormat("en-CA", {
+                            timeZone: facilityTz,
+                            year: "numeric", month: "2-digit", day: "2-digit",
+                        }).format(dayDate);
+                        const slotStartUtc = localToUtc(dayDateStr, `${String(hour).padStart(2, "0")}:00`, facilityTz);
+                        const slotEndUtc = localToUtc(dayDateStr, `${String(hour + 1).padStart(2, "0")}:00`, facilityTz);
                         const isPastCell = slotEndUtc.getTime() <= now.getTime();
                         const isCurrentCell = slotStartUtc.getTime() <= now.getTime() &&
                             now.getTime() < slotEndUtc.getTime();
-                        // O(1) pre-indexed lookups
-                        const slotKey = slotStartUtc.toISOString().slice(0, 13);
-                        const matchingTt = scheduleIndex.ttMap.get(slotKey) ?? null;
-                        const matchingBk = scheduleIndex.bkMap.get(slotKey) ?? null;
+                        const matchingTt = timetables.find((tt) => new Date(tt.startAt) < slotEndUtc && new Date(tt.endAt) > slotStartUtc) ?? null;
+                        const matchingBk = bookings.find((bk) => new Date(bk.startAt) < slotEndUtc && new Date(bk.endAt) > slotStartUtc) ?? null;
                         const isMaintenanceFacility = activeResource?.status === "MAINTENANCE";
                         return (<div key={dayIdx} className={cn("border-r border-border/40 last:border-r-0 p-1 relative transition-colors select-none", isMaintenanceFacility && !matchingTt && !matchingBk
                                 ? "bg-red-950/5 cursor-pointer hover:bg-red-950/15"
@@ -654,22 +718,22 @@ function CalendarView() {
             <Card className="p-4 bg-surface-2/20">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary"/>
-                Schedule for {selectedDate.toISOString().slice(0, 10)} (UTC)
+                Schedule for {selectedDate.toISOString().slice(0, 10)} ({facilityTz})
               </h3>
 
               <div className="space-y-2">
                 {hours.map((hour) => {
-                const cellStartUtc = new Date(selectedDate);
-                cellStartUtc.setUTCHours(hour, 0, 0, 0);
-                const cellEndUtc = new Date(selectedDate);
-                cellEndUtc.setUTCHours(hour + 1, 0, 0, 0);
+                const selectedDateStr = new Intl.DateTimeFormat("en-CA", {
+                    timeZone: facilityTz,
+                    year: "numeric", month: "2-digit", day: "2-digit",
+                }).format(selectedDate);
+                const cellStartUtc = localToUtc(selectedDateStr, `${String(hour).padStart(2, "0")}:00`, facilityTz);
+                const cellEndUtc = localToUtc(selectedDateStr, `${String(hour + 1).padStart(2, "0")}:00`, facilityTz);
                 const isPastCell = cellEndUtc.getTime() <= now.getTime();
                 const isCurrentCell = cellStartUtc.getTime() <= now.getTime() &&
                     now.getTime() < cellEndUtc.getTime();
-                // O(1) pre-indexed lookups
-                const slotKey = cellStartUtc.toISOString().slice(0, 13);
-                const matchingTt = scheduleIndex.ttMap.get(slotKey) ?? null;
-                const matchingBk = scheduleIndex.bkMap.get(slotKey) ?? null;
+                const matchingTt = timetables.find((tt) => new Date(tt.startAt) < cellEndUtc && new Date(tt.endAt) > cellStartUtc) ?? null;
+                const matchingBk = bookings.find((bk) => new Date(bk.startAt) < cellEndUtc && new Date(bk.endAt) > cellStartUtc) ?? null;
                 const isMaintenanceFacility = activeResource?.status === "MAINTENANCE";
                 return (<div key={hour} className={cn("p-3 rounded-[var(--radius-md)] border flex items-center justify-between gap-4 transition-colors", matchingTt
                         ? "bg-primary/10 border-primary/40 text-foreground cursor-pointer hover:border-primary/80"

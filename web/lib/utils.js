@@ -50,3 +50,66 @@ export function resolveReservationTimezone(resource) {
     // 4. Authoritative fallback
     return "UTC";
 }
+
+/**
+ * Converts a local calendar date ("YYYY-MM-DD") and time ("HH:mm") in a specific timezone
+ * into an authoritative UTC Date object.
+ *
+ * @param {string} dateStr - Date formatted as "YYYY-MM-DD".
+ * @param {string} timeStr - Time formatted as "HH:mm".
+ * @param {string} [tz="UTC"] - IANA timezone identifier.
+ * @returns {Date} Authoritative UTC Date object.
+ */
+export function localToUtc(dateStr, timeStr, tz = "UTC") {
+    try {
+        const [y, m, d] = dateStr.split("-").map(Number);
+        const [h, min] = timeStr.split(":").map(Number);
+        const naive = new Date(Date.UTC(y, m - 1, d, h, min, 0, 0));
+        const formatter = new Intl.DateTimeFormat("en-US", {
+            timeZone: tz,
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+        });
+        const parts = formatter.formatToParts(naive);
+        const get = (t) => parseInt(parts.find((p) => p.type === t)?.value || "0", 10);
+        const tzAsUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour") === 24 ? 0 : get("hour"), get("minute"), get("second"));
+        const offsetMs = tzAsUtc - naive.getTime();
+        return new Date(naive.getTime() - offsetMs);
+    } catch {
+        return new Date(`${dateStr}T${timeStr}:00.000Z`);
+    }
+}
+
+/**
+ * Given a UTC Date object or ISO string, extracts the local date ("YYYY-MM-DD")
+ * and time ("HH:mm") in the specified timezone.
+ *
+ * @param {Date|string} utcDateOrIso - UTC Date object or ISO timestamp.
+ * @param {string} [tz="UTC"] - IANA timezone identifier.
+ * @returns {{ date: string, time: string }} Local date and time strings.
+ */
+export function utcToLocalParts(utcDateOrIso, tz = "UTC") {
+    try {
+        const d = typeof utcDateOrIso === "string" ? new Date(utcDateOrIso) : utcDateOrIso;
+        const formatter = new Intl.DateTimeFormat("en-CA", {
+            timeZone: tz,
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", hour12: false,
+        });
+        const parts = formatter.formatToParts(d);
+        const get = (t) => parts.find((p) => p.type === t)?.value || "00";
+        let hour = get("hour");
+        if (hour === "24") hour = "00";
+        return {
+            date: `${get("year")}-${get("month")}-${get("day")}`,
+            time: `${hour}:${get("minute")}`,
+        };
+    } catch {
+        const d = new Date(utcDateOrIso);
+        return {
+            date: d.toISOString().slice(0, 10),
+            time: d.toISOString().slice(11, 16),
+        };
+    }
+}
+
