@@ -33,7 +33,7 @@ const ACTIVE_RESERVATION_STATES = Object.freeze(["CONFIRMED", "PENDING", "CHECKE
 /**
  * Roles permitted to access the multi-tier pending approvals queue (/api/approvals/pending).
  */
-const REVIEWER_ROLES = Object.freeze(["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD"]);
+const REVIEWER_ROLES = Object.freeze(["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD", "FACULTY"]);
 
 /**
  * Resolves the institutional or user display timezone.

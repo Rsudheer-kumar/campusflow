@@ -234,7 +234,7 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
             <div className="text-[11px] text-muted flex items-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5 text-success/70 shrink-0"/>
               <span>
-                Approval Policy &amp; Slot Hold: If approval is required, your reservation enters PENDING state while holding this slot against competing bookings.
+                Approval Policy &amp; Slot Hold: Student reservations require approval by faculty and administration before confirmation. Your reservation enters PENDING state while holding this slot against competing bookings.
               </span>
             </div>
           </div>

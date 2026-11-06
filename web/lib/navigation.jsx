@@ -30,13 +30,13 @@ export const mainNavItems = [
         label: "Approvals",
         href: "/dashboard/approvals",
         icon: <ClipboardList className="h-4 w-4"/>,
-        roles: ["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD"],
+        roles: ["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD", "FACULTY"],
     },
     {
         label: "Approval Policies",
         href: "/dashboard/approval-policies",
         icon: <ShieldCheck className="h-4 w-4"/>,
-        roles: ["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD"],
+        roles: ["ADMIN", "FACILITY_MANAGER", "DEPARTMENT_HEAD", "FACULTY"],
     },
     {
         label: "Maintenance",

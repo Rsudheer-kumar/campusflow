@@ -247,19 +247,47 @@ export class ReservationService {
         let activeStepDeadline = null;
         let approvalChainSnapshot = [];
 
-        if (policyResult.requiresApproval && policyResult.approvalChain && policyResult.approvalChain.length > 0) {
+        // Check if requester is a student
+        const isStudentBooking = Array.isArray(user.roles) && user.roles.includes(UserRole.STUDENT);
+
+        let effectiveRequiresApproval = Boolean(policyResult.requiresApproval);
+        let effectiveChain = Array.isArray(policyResult.approvalChain) && policyResult.approvalChain.length > 0
+          ? [...policyResult.approvalChain]
+          : [];
+
+        // RULE: For student users booking any room, lab, or block:
+        // Bookings MUST NOT auto-approve. They require approval by Faculty and Admin.
+        if (isStudentBooking) {
+          effectiveRequiresApproval = true;
+          if (effectiveChain.length === 0) {
+            effectiveChain = [
+              {
+                stepOrder: 1,
+                approverRole: ApproverRole.DEPARTMENT_HEAD, // Faculty / Department Head review
+                timeoutHours: 48,
+              },
+              {
+                stepOrder: 2,
+                approverRole: ApproverRole.ADMIN, // Campus Administrator sign-off
+                timeoutHours: 48,
+              },
+            ];
+          }
+        }
+
+        if (effectiveRequiresApproval && effectiveChain.length > 0) {
           initialStatus = ReservationStatus.PENDING;
           policyId = policyResult.policyId || null;
           currentStepOrder = 1;
-          currentApproverRole = policyResult.approvalChain[0].approverRole;
+          currentApproverRole = effectiveChain[0].approverRole;
 
           const now = new Date();
-          const firstStepTimeout = policyResult.approvalChain[0].timeoutHours;
+          const firstStepTimeout = effectiveChain[0].timeoutHours;
           activeStepDeadline = firstStepTimeout
             ? new Date(now.getTime() + firstStepTimeout * 3600000)
             : null;
 
-          approvalChainSnapshot = policyResult.approvalChain.map((step, idx) => ({
+          approvalChainSnapshot = effectiveChain.map((step, idx) => ({
             stepOrder: step.stepOrder,
             approverRole: step.approverRole,
             timeoutHours: step.timeoutHours,
@@ -421,12 +449,21 @@ export class ReservationService {
 
         // 4. Role Authorization & Override Determination
         const isAdmin = user.roles.includes(UserRole.ADMIN);
-        const holdsStepRole = user.roles.includes(activeStep.approverRole);
+        const isFaculty = user.roles.includes(UserRole.FACULTY);
+        const isDeptHead = user.roles.includes(UserRole.DEPARTMENT_HEAD);
+
+        const isFacultyStep =
+          activeStep.approverRole === ApproverRole.DEPARTMENT_HEAD ||
+          activeStep.approverRole === ApproverRole.FACULTY;
+
+        const holdsStepRole =
+          user.roles.includes(activeStep.approverRole) ||
+          (isFacultyStep && (isFaculty || isDeptHead));
 
         let isCrossDept = false;
-        if (activeStep.approverRole === ApproverRole.DEPARTMENT_HEAD) {
+        if (isFacultyStep) {
           const requester = await User.findById(reservation.user).select('department').session(session).lean();
-          if (requester?.department !== user.department) {
+          if (user.department && requester?.department && requester.department !== user.department) {
             isCrossDept = true;
           }
         }
@@ -599,12 +636,21 @@ export class ReservationService {
 
         // Role & Department Scoping
         const isAdmin = user.roles.includes(UserRole.ADMIN);
-        const holdsStepRole = user.roles.includes(activeStep.approverRole);
+        const isFaculty = user.roles.includes(UserRole.FACULTY);
+        const isDeptHead = user.roles.includes(UserRole.DEPARTMENT_HEAD);
+
+        const isFacultyStep =
+          activeStep.approverRole === ApproverRole.DEPARTMENT_HEAD ||
+          activeStep.approverRole === ApproverRole.FACULTY;
+
+        const holdsStepRole =
+          user.roles.includes(activeStep.approverRole) ||
+          (isFacultyStep && (isFaculty || isDeptHead));
 
         let isCrossDept = false;
-        if (activeStep.approverRole === ApproverRole.DEPARTMENT_HEAD) {
+        if (isFacultyStep) {
           const requester = await User.findById(reservation.user).select('department').session(session).lean();
-          if (requester?.department !== user.department) {
+          if (user.department && requester?.department && requester.department !== user.department) {
             isCrossDept = true;
           }
         }
