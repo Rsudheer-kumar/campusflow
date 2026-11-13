@@ -96,3 +96,13 @@ export {
   TimetableEntry,
   TimetableEntrySchema,
 } from './timetableEntry.model.js';
+
+// Holiday Management (Feature 1)
+export {
+  Holiday,
+  HolidaySchema,
+  HolidaySource,
+  HolidayCategory,
+  HolidayScope,
+  HolidayStatus,
+} from './holiday.model.js';

@@ -19,6 +19,7 @@ import { getZonedParts, zonedTimeToUtc, intervalsOverlap } from '../utils/timezo
 import { timeStringToMinutes, isValidCalendarDate } from '../utils/dateValidation.js';
 import { BadRequestError } from '../utils/errors.js';
 import { QuotaService } from './quota.service.js';
+import { HolidayService } from './holiday.service.js';
 
 /**
  * @typedef {Object} AvailabilityCheckParams
@@ -215,6 +216,27 @@ export class AvailabilityService {
         reason: 'OUTSIDE_OPERATING_HOURS',
         message: `Requested time ${candidateStartTime}-${candidateEndTime} on ${localStartParts.weekday} is outside configured operating hours`,
         details: { weekday: localStartParts.weekday, requested: `${candidateStartTime}-${candidateEndTime}` },
+      };
+    }
+
+    // 5.5 Holiday conflict check (predefined public holidays & admin-declared campus holidays)
+    const holidayCheck = await HolidayService.evaluateHolidayConflict({
+      startAt,
+      endAt,
+      resource,
+    });
+
+    if (holidayCheck.isBlocked) {
+      return {
+        available: false,
+        reason: 'HOLIDAY_CONFLICT',
+        message: `The facility is closed due to holiday: ${holidayCheck.holiday.name} (${holidayCheck.holiday.reason})`,
+        details: {
+          holidayId: holidayCheck.holiday._id?.toString(),
+          holidayName: holidayCheck.holiday.name,
+          category: holidayCheck.holiday.category,
+          reason: holidayCheck.holiday.reason,
+        },
       };
     }
 
