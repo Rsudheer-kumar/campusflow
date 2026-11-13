@@ -20,7 +20,7 @@ export function SidebarContent({ onItemClick, className }) {
     };
     const visibleMainItems = filterItems(mainNavItems);
     const visibleBottomItems = filterItems(bottomNavItems);
-    return (<div className={cn("flex h-full flex-col bg-[#0B1224]", className)}>
+    return (<div className={cn("flex h-full flex-col bg-surface", className)}>
       {/* Brand Header */}
       <div className="flex h-16 shrink-0 items-center border-b border-border px-6">
         <Link href="/" prefetch={true} className="flex items-center gap-2.5 text-lg font-semibold tracking-tight text-foreground outline-none rounded-[var(--radius-sm)] focus-visible:ring-2 focus-visible:ring-primary/50" aria-label="Return to CampusFlow Home">

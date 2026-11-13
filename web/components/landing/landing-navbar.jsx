@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 const NAV_LINKS = [
     { href: "#features", label: "Features" },
@@ -31,31 +32,32 @@ export function LandingNavbar() {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
     return (<header className={cn("fixed top-0 left-0 right-0 z-50 transition-all duration-500", scrolled
-            ? "bg-[#050816]/95 border-b border-border shadow-sm py-4"
+            ? "bg-background/95 border-b border-border shadow-sm py-4"
             : "bg-transparent py-6")}>
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
           <div className="h-8 w-8 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center transition-colors group-hover:bg-primary/30">
-            <div className="h-3 w-3 bg-primary rounded-sm shadow-[0_0_10px_#4F8CFF]"/>
+            <div className="h-3 w-3 bg-primary rounded-sm shadow-[0_0_10px_var(--primary)]"/>
           </div>
-          <span className="font-semibold text-lg tracking-tight text-white drop-shadow-sm">CampusFlow</span>
+          <span className="font-semibold text-lg tracking-tight text-foreground drop-shadow-sm">CampusFlow</span>
         </Link>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-8">
-          {NAV_LINKS.map((link) => (<Link key={link.href} href={link.href} className="text-sm font-medium text-white/70 hover:text-white transition-colors drop-shadow-sm">
+          {NAV_LINKS.map((link) => (<Link key={link.href} href={link.href} className="text-sm font-medium text-muted hover:text-foreground transition-colors drop-shadow-sm">
               {link.label}
             </Link>))}
         </nav>
 
         {/* Desktop Actions */}
-        <div className="hidden md:flex items-center gap-4">
-          <Link href="/signin" className="text-sm font-medium text-white/70 hover:text-white transition-colors drop-shadow-sm">
+        <div className="hidden md:flex items-center gap-3">
+          <ThemeToggle />
+          <Link href="/signin" className="text-sm font-medium text-muted hover:text-foreground transition-colors drop-shadow-sm">
             Sign In
           </Link>
           <Link href="/signin?tab=register">
-            <Button size="sm" variant="primary" className="group shadow-[0_4px_14px_0_rgba(79,140,255,0.39)]">
+            <Button size="sm" variant="primary" className="group shadow-[0_4px_14px_0_rgba(66,107,139,0.39)]">
               Explore Campus
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"/>
             </Button>
@@ -63,18 +65,21 @@ export function LandingNavbar() {
         </div>
 
         {/* Mobile Toggle */}
-        <button className="md:hidden text-white/70 hover:text-white" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-          {mobileMenuOpen ? <X className="h-6 w-6"/> : <Menu className="h-6 w-6"/>}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button className="text-muted hover:text-foreground p-1" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+            {mobileMenuOpen ? <X className="h-6 w-6"/> : <Menu className="h-6 w-6"/>}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
-      {mobileMenuOpen && (<div className="md:hidden absolute top-full left-0 right-0 bg-[#0B1527] border-b border-border shadow-2xl p-4 flex flex-col gap-4">
-          {NAV_LINKS.map((link) => (<Link key={link.href} href={link.href} className="text-sm font-medium text-white py-2" onClick={() => setMobileMenuOpen(false)}>
+      {mobileMenuOpen && (<div className="md:hidden absolute top-full left-0 right-0 bg-surface border-b border-border shadow-2xl p-4 flex flex-col gap-4">
+          {NAV_LINKS.map((link) => (<Link key={link.href} href={link.href} className="text-sm font-medium text-foreground py-2" onClick={() => setMobileMenuOpen(false)}>
               {link.label}
             </Link>))}
           <div className="h-[1px] w-full bg-border"/>
-          <Link href="/signin" className="text-sm font-medium text-white py-2" onClick={() => setMobileMenuOpen(false)}>
+          <Link href="/signin" className="text-sm font-medium text-muted hover:text-foreground py-2" onClick={() => setMobileMenuOpen(false)}>
             Sign In
           </Link>
           <Link href="/signin?tab=register" onClick={() => setMobileMenuOpen(false)}>
