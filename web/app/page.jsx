@@ -88,7 +88,8 @@ export default function LandingPage() {
             <LandingScene />
           </div>
 
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent z-[1] w-full lg:w-2/3 pointer-events-none"/>
+          {/* Controlled Localized Gradient: Keeps heading area readable while preserving 3D campus visibility */}
+          <div className="absolute inset-y-0 left-0 w-full md:w-3/5 lg:w-[46%] z-[1] pointer-events-none bg-gradient-to-b from-background/70 via-background/30 to-transparent md:bg-gradient-to-r md:from-background/70 md:via-background/25 md:to-transparent" />
 
           {/* Hero Content Overlay */}
           <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center h-full pt-16 pointer-events-none">
@@ -139,7 +140,8 @@ export default function LandingPage() {
             <div className="hidden md:block w-full md:w-2/5 lg:w-1/2"></div>
           </div>
 
-          <div className="absolute bottom-0 w-full h-32 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none"/>
+          {/* Bottom Soft Edge Blend: Prevents harsh horizontal cut without creating a dark/muddy band */}
+          <div className="absolute bottom-0 inset-x-0 h-16 md:h-20 bg-gradient-to-t from-background via-background/40 to-transparent z-[2] pointer-events-none" />
         </section>
 
         {/* FEATURES SECTION (Scroll-driven 3D Orbit Carousel) */}
