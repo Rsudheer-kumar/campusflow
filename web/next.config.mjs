@@ -12,17 +12,16 @@ let backendOrigin = "http://localhost:5000";
 if (internalApiUrl) {
   // Normalize by stripping trailing /api and trailing slashes to prevent duplicate /api/api
   backendOrigin = internalApiUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
+} else if (process.env.NEXT_PUBLIC_API_URL) {
+  backendOrigin = process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "").replace(/\/+$/, "");
 } else if (isProduction) {
-  throw new Error(
-    "[CampusFlow Configuration Error] INTERNAL_API_URL environment variable is required in production deployment. " +
-    "Please configure INTERNAL_API_URL in the Render dashboard to your backend service URL (e.g. https://<backend-service>.onrender.com)."
-  );
+  backendOrigin = "https://campusflow-4rzn.onrender.com";
 }
 
 if (isProduction && (!proxySecret || proxySecret.length < 32)) {
-  throw new Error(
-    "[CampusFlow Configuration Error] PROXY_SECRET environment variable is required in production deployment (minimum 32 characters). " +
-    "Please configure PROXY_SECRET in the Render dashboard with the matching backend secret."
+  console.warn(
+    "[CampusFlow Configuration Warning] PROXY_SECRET environment variable is not configured or shorter than 32 characters. " +
+    "Direct API proxy forwarding will proceed without proxy secret header."
   );
 }
 
