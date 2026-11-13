@@ -267,9 +267,13 @@ export function CheckInModal({ open, onClose, booking, onSuccess }) {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      const facilityId = resObj?._id || tokenData?.resourceId || "";
+      const effectiveResourceId = facilityId || scannedResourceId.trim() || resourceCode;
+
       const res = await api.bookings.checkIn(booking._id, {
         token: activeToken,
-        resourceId: scannedResourceId.trim() || resourceCode,
+        resourceId: effectiveResourceId,
+        scannedCode: scannedResourceId.trim() || resourceCode,
         allowEarly: true,
       });
 
@@ -286,7 +290,12 @@ export function CheckInModal({ open, onClose, booking, onSuccess }) {
       });
       onSuccess();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Check-in failed. Please verify credentials.");
+      const errorMsg = Array.isArray(err?.details?.errors)
+        ? err.details.errors.map(e => e.message).join(", ")
+        : err instanceof Error
+        ? err.message
+        : "Check-in failed. Please verify credentials.";
+      setSubmitError(errorMsg);
     } finally {
       setIsSubmitting(false);
     }

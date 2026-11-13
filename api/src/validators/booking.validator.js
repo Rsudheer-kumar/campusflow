@@ -349,8 +349,12 @@ export function validateCheckInBody(data) {
     errors.push({ field: 'token', message: 'token must be at least 32 characters' });
   }
 
-  if (!record.resourceId || typeof record.resourceId !== 'string' || !MONGO_ID_REGEX.test(record.resourceId)) {
-    errors.push({ field: 'resourceId', message: 'resourceId is required and must be a valid 24-character hex ObjectId' });
+  const rawResId = typeof record.resourceId === 'string' ? record.resourceId.trim() : '';
+  const rawScannedCode = typeof record.scannedCode === 'string' ? record.scannedCode.trim() : '';
+  const effectiveId = rawResId || rawScannedCode;
+
+  if (!effectiveId) {
+    errors.push({ field: 'resourceId', message: 'resourceId or scanned room code is required' });
   }
 
   if (record.method !== undefined && record.method !== 'QR_SCAN') {
@@ -365,7 +369,9 @@ export function validateCheckInBody(data) {
     success: true,
     data: {
       token: record.token.trim(),
-      resourceId: record.resourceId,
+      resourceId: effectiveId,
+      scannedCode: rawScannedCode || effectiveId,
+      allowEarly: Boolean(record.allowEarly || record.testMode),
       method: 'QR_SCAN',
     },
   };

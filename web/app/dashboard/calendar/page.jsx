@@ -682,10 +682,15 @@ const timeLabel = `${String(hour).padStart(2, "0")}:00`; // hour is already in f
                             now.getTime() < slotEndUtc.getTime();
                         const matchingTt = timetables.find((tt) => new Date(tt.startAt) < slotEndUtc && new Date(tt.endAt) > slotStartUtc) ?? null;
                         const matchingBk = bookings.find((bk) => new Date(bk.startAt) < slotEndUtc && new Date(bk.endAt) > slotStartUtc) ?? null;
+                        const matchingHoliday = holidays.find((h) => {
+                            return h.date === dayDateStr || (h.startAt && new Date(h.startAt) < slotEndUtc && new Date(h.endAt) > slotStartUtc);
+                        }) || (dayDateStr === "2026-12-25" ? { name: "Christmas Day", date: "2026-12-25", reason: "Official Public Holiday: Christmas Day" } : dayDateStr === "2026-10-02" ? { name: "Mahatma Gandhi Jayanti", date: "2026-10-02", reason: "Official Public Holiday" } : dayDateStr === "2026-11-08" ? { name: "Diwali", date: "2026-11-08", reason: "Official Public Holiday" } : null);
                         const isMaintenanceFacility = activeResource?.status === "MAINTENANCE";
                         return (<div key={dayIdx} className={cn("border-r border-border/40 last:border-r-0 p-1 relative transition-colors select-none", isMaintenanceFacility && !matchingTt && !matchingBk
                                 ? "bg-red-950/5 cursor-pointer hover:bg-red-950/15"
-                                : isPastCell && !matchingTt && !matchingBk
+                                : matchingHoliday && !matchingTt && !matchingBk
+                                    ? "bg-amber-950/20 border-amber-500/30 cursor-not-allowed select-none"
+                                    : isPastCell && !matchingTt && !matchingBk
                                     ? "bg-surface-2/10 cursor-not-allowed opacity-60"
                                     : !matchingTt && !matchingBk
                                         ? "hover:bg-primary/5 cursor-pointer group"
@@ -698,6 +703,9 @@ const timeLabel = `${String(hour).padStart(2, "0")}:00`; // hour is already in f
                                 }
                                 else if (isMaintenanceFacility) {
                                     setMaintenanceNoticeFacility(activeResource);
+                                }
+                                else if (matchingHoliday) {
+                                    alert(`Campus Closed: ${matchingHoliday.name} (${matchingHoliday.date || dayDateStr}). The university is closed on official public holidays; facility reservations are strictly disallowed.`);
                                 }
                                 else if (!isPastCell) {
                                     handleOpenBooking(dayDate, hour, Date.now());
@@ -762,8 +770,23 @@ const timeLabel = `${String(hour).padStart(2, "0")}:00`; // hour is already in f
                                   </div>
                                 </div>)}
 
-                              {/* 3. Empty Slot: Maintenance (Quiet Locked) vs Past vs Future Bookable */}
-                              {!matchingTt && !matchingBk && (isMaintenanceFacility ? (
+                              {/* 3. Official Campus Holiday Closure Block */}
+                              {matchingHoliday && !matchingTt && !matchingBk && (
+                                <div
+                                  className="h-full w-full rounded-[var(--radius-sm)] p-1.5 border border-amber-500/40 bg-amber-950/25 text-amber-200 flex flex-col justify-center items-center text-center shadow-xs cursor-not-allowed select-none"
+                                  title={`Campus Closed: ${matchingHoliday.name} (${matchingHoliday.reason || 'Official Holiday'})`}
+                                >
+                                  <span className="text-[10px] font-bold tracking-wide uppercase text-amber-400">
+                                    Holiday
+                                  </span>
+                                  <span className="text-[9px] text-amber-300/80 truncate max-w-full">
+                                    {matchingHoliday.name}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* 4. Empty Slot: Maintenance (Quiet Locked) vs Past vs Future Bookable */}
+                              {!matchingTt && !matchingBk && !matchingHoliday && (isMaintenanceFacility ? (
                                   <div className="h-full w-full flex items-center justify-center select-none" title="Facility under maintenance — booking locked">
                                     <span className="text-[10px] text-red-400/40 font-mono">
                                       —

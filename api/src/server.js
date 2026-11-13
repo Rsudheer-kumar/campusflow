@@ -18,6 +18,7 @@ import {
 import { connectRedis, disconnectRedis, getRedisState } from './config/redis.js';
 import { logger } from './utils/logger.js';
 import { autoReleaseScheduler } from './schedulers/autoRelease.scheduler.js';
+import { HolidayService } from './services/holiday.service.js';
 
 let server = null;
 let isShuttingDown = false;
@@ -46,6 +47,13 @@ async function startServer() {
 
       // Start autonomous background auto-release worker
       autoReleaseScheduler.start();
+
+      // Ensure official public holidays (e.g. Christmas Day 2026-12-25) are seeded
+      try {
+        await HolidayService.syncPredefinedHolidays(2026);
+      } catch (holErr) {
+        logger.warn('[HolidayService] Startup holiday sync note:', holErr?.message);
+      }
     } catch (dbError) {
       const errorMsg = dbError instanceof Error ? dbError.message : String(dbError);
       logger.error(

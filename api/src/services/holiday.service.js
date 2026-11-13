@@ -113,7 +113,15 @@ export class HolidayService {
       query.category = filter.category;
     }
 
-    return Holiday.find(query).sort({ startAt: 1 }).lean();
+    let holidays = await Holiday.find(query).sort({ startAt: 1 }).lean();
+
+    // Auto-seed if database is currently empty
+    if (holidays.length === 0) {
+      await HolidayService.syncPredefinedHolidays(filter.year || 2026);
+      holidays = await Holiday.find(query).sort({ startAt: 1 }).lean();
+    }
+
+    return holidays;
   }
 
   /**
@@ -290,13 +298,41 @@ export class HolidayService {
       return { isBlocked: false, holiday: null };
     }
 
+    const startIsoDate = new Date(startAt).toISOString().slice(0, 10);
+    const endIsoDate = new Date(endAt).toISOString().slice(0, 10);
+    const targetYear = new Date(startAt).getUTCFullYear();
+
     // Find all active published holidays where the university is closed that overlap the requested interval
     const holidays = await Holiday.find({
       status: HolidayStatus.PUBLISHED,
       isUniversityClosed: true,
-      startAt: { $lt: endAt },
-      endAt: { $gt: startAt },
+      $or: [
+        { startAt: { $lt: endAt }, endAt: { $gt: startAt } },
+        { date: { $gte: startIsoDate, $lte: endIsoDate } },
+      ],
     }).lean();
+
+    // Predefined catalog fallback if database is not yet synced or empty (offline-safe)
+    if (holidays.length === 0) {
+      const predefinedMatch = PREDEFINED_PUBLIC_HOLIDAYS.find(
+        (h) => h.date >= startIsoDate && h.date <= endIsoDate
+      );
+      if (predefinedMatch) {
+        // Trigger non-blocking background sync so DB gets populated
+        HolidayService.syncPredefinedHolidays(targetYear).catch(() => {});
+
+        return {
+          isBlocked: true,
+          holiday: {
+            name: predefinedMatch.name,
+            date: predefinedMatch.date,
+            reason: `Official Public Holiday: ${predefinedMatch.name}`,
+            category: predefinedMatch.category,
+            scope: HolidayScope.CAMPUS_WIDE,
+          },
+        };
+      }
+    }
 
     for (const h of holidays) {
       if (h.scope === HolidayScope.CAMPUS_WIDE) {

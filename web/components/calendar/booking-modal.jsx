@@ -39,6 +39,27 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
     const [endTime, setEndTime] = useState(initial.endTime);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [conflictError, setConflictError] = useState(null);
+    const [holidaysList, setHolidaysList] = useState([]);
+
+    useEffect(() => {
+        let ignore = false;
+        api.holidays.list().then((data) => {
+            if (!ignore && Array.isArray(data)) {
+                setHolidaysList(data);
+            }
+        }).catch(() => {});
+        return () => { ignore = true; };
+    }, []);
+
+    const holidayOnDate = useMemo(() => {
+        if (!date) return null;
+        const found = holidaysList.find(h => h.date === date);
+        if (found) return found;
+        if (date === "2026-12-25") return { name: "Christmas Day", date: "2026-12-25", reason: "Official Public Holiday: Christmas Day" };
+        if (date === "2026-10-02") return { name: "Mahatma Gandhi Jayanti", date: "2026-10-02", reason: "Official Public Holiday: Mahatma Gandhi Jayanti" };
+        if (date === "2026-11-08") return { name: "Diwali (Deepavali)", date: "2026-11-08", reason: "Official Public Holiday: Diwali" };
+        return null;
+    }, [date, holidaysList]);
 
     if (resource?.status === "MAINTENANCE") {
         return (
@@ -73,6 +94,17 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
         if (!resource)
             return;
         setConflictError(null);
+
+        if (holidayOnDate) {
+            setConflictError({
+                code: "HOLIDAY_CONFLICT",
+                message: `Official Campus Holiday: ${holidayOnDate.name} (${holidayOnDate.date}). The university is closed on official public holidays; facility reservations are strictly disallowed.`,
+                isTimetable: false,
+                isHoliday: true,
+            });
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const startAtDate = localToUtc(date, startTime, targetTz);
@@ -115,12 +147,17 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
                 const isTimetableConflict = err.code === "TIMETABLE_CONFLICT" ||
                     err.message.includes("TIMETABLE_CONFLICT") ||
                     err.message.toLowerCase().includes("academic timetable");
+                const isHolidayConflict = err.code === "HOLIDAY_CONFLICT" ||
+                    err.message.toLowerCase().includes("holiday") ||
+                    err.message.toLowerCase().includes("closed due to holiday");
                 const isNoShowSuspension = err.code === "NO_SHOW_RESTRICTION_ACTIVE" ||
                     err.message.includes("unexcused no-shows");
                 let formattedMessage = isAuthError
                     ? "You must be signed in with your university account to reserve facilities. Your session may have expired."
                     : isTimetableConflict
                     ? "Academic Timetable Conflict: This facility is reserved for an authoritative institutional curriculum session during this period. Academic courses take precedence over ad-hoc user reservations."
+                    : isHolidayConflict
+                    ? `Official Holiday Closure: ${err.message}`
                     : err.message;
                 if (isNoShowSuspension) {
                     // Format raw ISO timestamps into human-readable date/time string
@@ -140,6 +177,7 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
                     isTimetable: isTimetableConflict,
                     isNoShowSuspension,
                     isAuth: isAuthError,
+                    isHoliday: isHolidayConflict,
                 });
             }
             else {
@@ -199,6 +237,19 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
               <span>Room {resource.location?.roomNumber || resource.code}</span>
             </div>)}
 
+          {/* Official Campus Holiday Alert Banner */}
+          {holidayOnDate && (
+            <div className="p-3.5 rounded-[var(--radius-md)] border border-amber-500/40 bg-amber-500/10 text-amber-200 text-xs flex items-start gap-2.5">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-400" />
+              <div>
+                <span className="font-bold block text-sm text-amber-300">Campus Closed: {holidayOnDate.name}</span>
+                <span className="text-[11px] text-foreground/80 leading-relaxed block mt-0.5">
+                  {holidayOnDate.reason || "Official Public Holiday"}. The university is closed on {holidayOnDate.date}; room reservations are strictly blocked.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Title */}
           <Input label="Reservation Title" required placeholder="e.g. CS Study Group, Research Project Review" value={title} onChange={(e) => setTitle(e.target.value)}/>
 
@@ -236,8 +287,8 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
           <Button type="button" variant="ghost" onClick={handleClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" disabled={isSubmitting || !title.trim() || !resource}>
-            {isSubmitting ? "Verifying & Reserving..." : "Confirm Reservation"}
+          <Button type="submit" variant="primary" disabled={isSubmitting || !title.trim() || !resource || !!holidayOnDate}>
+            {isSubmitting ? "Verifying & Reserving..." : holidayOnDate ? "Campus Closed (Holiday)" : "Confirm Reservation"}
           </Button>
         </div>
       </form>
