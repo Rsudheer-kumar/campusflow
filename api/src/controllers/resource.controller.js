@@ -8,6 +8,7 @@ import { Resource } from '../models/index.js';
 import { ResourceService } from '../services/resource.service.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { logger } from '../utils/logger.js';
+import { memoryCache } from '../utils/memoryCache.js';
 
 export class ResourceController {
   /**
@@ -17,6 +18,12 @@ export class ResourceController {
   static async listResources(req, res) {
     try {
       const filters = req.query || {};
+      const cacheKey = `resources_${JSON.stringify(filters)}`;
+      const cached = memoryCache.get(cacheKey);
+      if (cached) {
+        return sendSuccess(res, cached);
+      }
+
       const { search, building, status, resourceType, page = 1, limit = 20 } = filters;
 
       const query = {};
@@ -53,13 +60,18 @@ export class ResourceController {
         Resource.countDocuments(query),
       ]);
 
-      sendSuccess(res, {
+      const payload = {
         resources,
         total,
         page,
         limit,
         totalPages: Math.ceil(total / limit) || 1,
-      });
+      };
+
+      // Cache resource catalogue in memory for 60 seconds
+      memoryCache.set(cacheKey, payload, 60000);
+
+      sendSuccess(res, payload);
     } catch (error) {
       logger.error('Failed to list resources', error instanceof Error ? error.message : error);
       sendError(res, 'INTERNAL_SERVER_ERROR', 'An unexpected error occurred while fetching resources', 500);

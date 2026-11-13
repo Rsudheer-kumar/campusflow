@@ -48,7 +48,9 @@ export async function connectDatabase(uriOverride) {
     serverSelectionTimeoutMS: 5000,
     connectTimeoutMS: 10000,
     socketTimeoutMS: 45000,
-    autoIndex: !env.isProduction,
+    maxPoolSize: 50,
+    minPoolSize: 5,
+    autoIndex: true,
     bufferCommands: false,
   };
 

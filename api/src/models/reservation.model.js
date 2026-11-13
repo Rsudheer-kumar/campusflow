@@ -370,6 +370,12 @@ ReservationSchema.index(
   { name: 'idx_resource_status_start_end' }
 );
 
+// 2b. Resource schedule query index: Fast lookup for calendar/resource interval queries
+ReservationSchema.index(
+  { resource: 1, startAt: 1, endAt: 1 },
+  { name: 'idx_resource_start_end' }
+);
+
 // 3. User booking history index: Retrieve bookings for a specific user ordered by date
 ReservationSchema.index(
   { user: 1, startAt: -1 },

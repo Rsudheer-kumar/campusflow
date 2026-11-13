@@ -5,10 +5,17 @@
 
 import { HolidayService } from '../services/holiday.service.js';
 import { sendSuccess } from '../utils/response.js';
+import { memoryCache } from '../utils/memoryCache.js';
 
 export async function listHolidays(req, res, next) {
   try {
     const { year, startDate, endDate, date, category } = req.query;
+    const cacheKey = `holidays_${JSON.stringify(req.query || {})}`;
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+      return sendSuccess(res, cached, 'Holidays retrieved successfully');
+    }
+
     const holidays = await HolidayService.listHolidays({
       year,
       startDate,
@@ -16,6 +23,8 @@ export async function listHolidays(req, res, next) {
       date,
       category,
     });
+
+    memoryCache.set(cacheKey, holidays, 60000);
     return sendSuccess(res, holidays, 'Holidays retrieved successfully');
   } catch (err) {
     return next(err);
@@ -25,6 +34,7 @@ export async function listHolidays(req, res, next) {
 export async function declareCampusHoliday(req, res, next) {
   try {
     const result = await HolidayService.declareCampusHoliday(req.body, req.user);
+    memoryCache.invalidatePrefix('holidays_');
     return sendSuccess(
       res,
       result,
@@ -41,6 +51,7 @@ export async function revokeHoliday(req, res, next) {
     const { id } = req.params;
     const { reason } = req.body;
     const holiday = await HolidayService.revokeHoliday(id, req.user, reason);
+    memoryCache.invalidatePrefix('holidays_');
     return sendSuccess(res, holiday, `Holiday "${holiday.name}" has been revoked`);
   } catch (err) {
     return next(err);
@@ -51,6 +62,7 @@ export async function syncPublicHolidays(req, res, next) {
   try {
     const year = req.body.year ? Number(req.body.year) : new Date().getUTCFullYear();
     const result = await HolidayService.syncPredefinedHolidays(year, req.user?._id);
+    memoryCache.invalidatePrefix('holidays_');
     return sendSuccess(
       res,
       result,

@@ -797,20 +797,16 @@ export class ReservationService {
    * Lists reservations with flexible filtering, range overlap queries, and pagination.
    */
   static async listReservations(filter, requestingUser = null) {
-    // Reconcile concluded reservations whose end date has passed to COMPLETED
-    try {
-      await Reservation.updateMany(
-        {
-          status: { $in: [ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN] },
-          endAt: { $lte: new Date() },
-        },
-        {
-          $set: { status: ReservationStatus.COMPLETED },
-        }
-      );
-    } catch {
-      // Non-blocking in case of mock/read-only mode
-    }
+    // Reconcile concluded reservations asynchronously in background without blocking this read request
+    Reservation.updateMany(
+      {
+        status: { $in: [ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN] },
+        endAt: { $lte: new Date() },
+      },
+      {
+        $set: { status: ReservationStatus.COMPLETED },
+      }
+    ).catch(() => {});
 
     const query = {};
 

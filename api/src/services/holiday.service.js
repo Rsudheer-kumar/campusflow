@@ -52,23 +52,26 @@ export class HolidayService {
    */
   static async syncPredefinedHolidays(year = 2026, performedBy = null) {
     logger.info(`[HolidayService] Synchronizing public holidays for year ${year}...`);
-    const results = { synced: 0, skipped: 0 };
+    const existing = await Holiday.find({
+      source: HolidaySource.PREDEFINED_PUBLIC,
+      year,
+    })
+      .select('date name')
+      .lean();
+
+    const existingKeys = new Set(existing.map((h) => `${h.date}_${h.name}`));
+    const toInsert = [];
 
     for (const item of PREDEFINED_PUBLIC_HOLIDAYS) {
       const itemYear = parseInt(item.date.split('-')[0], 10);
       if (itemYear !== year) continue;
 
-      const startAt = new Date(`${item.date}T00:00:00.000Z`);
-      const endAt = new Date(`${item.date}T23:59:59.999Z`);
+      const key = `${item.date}_${item.name}`;
+      if (!existingKeys.has(key)) {
+        const startAt = new Date(`${item.date}T00:00:00.000Z`);
+        const endAt = new Date(`${item.date}T23:59:59.999Z`);
 
-      const existing = await Holiday.findOne({
-        date: item.date,
-        name: item.name,
-        source: HolidaySource.PREDEFINED_PUBLIC,
-      });
-
-      if (!existing) {
-        await Holiday.create({
+        toInsert.push({
           name: item.name,
           date: item.date,
           startAt,
@@ -89,13 +92,20 @@ export class HolidayService {
             },
           ],
         });
-        results.synced += 1;
-      } else {
-        results.skipped += 1;
       }
     }
 
-    return results;
+    let insertedCount = 0;
+    if (toInsert.length > 0) {
+      const inserted = await Holiday.insertMany(toInsert, { ordered: false });
+      insertedCount = inserted.length;
+    }
+
+    return {
+      synced: insertedCount,
+      skipped: existingKeys.size,
+      total: PREDEFINED_PUBLIC_HOLIDAYS.length,
+    };
   }
 
   /**
@@ -119,13 +129,7 @@ export class HolidayService {
       query.category = filter.category;
     }
 
-    let holidays = await Holiday.find(query).sort({ startAt: 1 }).lean();
-
-    // Auto-seed if database is currently empty
-    if (holidays.length === 0) {
-      await HolidayService.syncPredefinedHolidays(filter.year || 2026);
-      holidays = await Holiday.find(query).sort({ startAt: 1 }).lean();
-    }
+    const holidays = await Holiday.find(query).sort({ startAt: 1 }).lean();
 
     return holidays;
   }

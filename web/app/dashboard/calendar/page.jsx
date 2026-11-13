@@ -148,7 +148,6 @@ function CalendarView() {
     }, []);
     // Sync selected resource with URL
     const handleResourceChange = (resId) => {
-        setIsLoading(true);
         setSelectedResourceId(resId);
         const params = new URLSearchParams(searchParams.toString());
         params.set("resourceId", resId);
@@ -158,6 +157,10 @@ function CalendarView() {
     const activeResource = useMemo(() => {
         return resources.find((r) => r._id === selectedResourceId) || null;
     }, [resources, selectedResourceId]);
+
+    // Schedule client-side cache ref: maps `${resourceId}_${weekMonday}` to cached entries
+    const scheduleCacheRef = useRef(new Map());
+
     // Calculate Monday of the active week
     const weekDays = useMemo(() => {
         const d = new Date(selectedDate);
@@ -174,14 +177,30 @@ function CalendarView() {
         }
         return days;
     }, [selectedDate]);
+
     // 2. Fetch Timetable Entries, Bookings, and Holidays for the selected resource and date range
-    const loadScheduleData = useCallback(async () => {
+    const loadScheduleData = useCallback(async (forceRefresh = false) => {
         if (!selectedResourceId)
             return;
-        setIsLoading(true);
+
+        const startAt = weekDays[0].toISOString();
+        const endAt = new Date(weekDays[6].getTime() + 86400000 - 1).toISOString();
+        const cacheKey = `${selectedResourceId}_${startAt.slice(0, 10)}`;
+
+        // Instant UI cache check: if previously loaded, show instantly without blocking
+        if (!forceRefresh && scheduleCacheRef.current.has(cacheKey)) {
+            const cached = scheduleCacheRef.current.get(cacheKey);
+            setTimetables(cached.timetables || []);
+            setBookings(cached.bookings || []);
+            if (cached.holidays?.length) setHolidays(cached.holidays);
+            setIsLoading(false);
+            setIsRefreshing(true);
+        } else {
+            setIsLoading(true);
+        }
+
         try {
-            const startAt = weekDays[0].toISOString();
-            const endAt = new Date(weekDays[6].getTime() + 86400000 - 1).toISOString();
+            const selectedYear = new Date(startAt).getUTCFullYear();
             const [ttRes, bkRes, holRes] = await Promise.all([
                 api.timetables.list({
                     resourceId: selectedResourceId,
@@ -194,17 +213,30 @@ function CalendarView() {
                     endAt,
                     limit: 100,
                 }),
+                // Fetch holidays for the academic year with fast backend memory cache
                 api.holidays.list({
-                    startDate: startAt,
-                    endDate: endAt,
+                    year: selectedYear,
                 }).catch(() => []),
             ]);
-            setTimetables(ttRes.entries || []);
-            // Include all active bookings holding capacity on calendar (CONFIRMED, PENDING, CHECKED_IN)
-            setBookings((bkRes.bookings || []).filter((b) => b.status === "CONFIRMED" ||
-                b.status === "PENDING" ||
-                b.status === "CHECKED_IN"));
-            setHolidays(Array.isArray(holRes) ? holRes : []);
+
+            const newTimetables = ttRes.entries || [];
+            const newBookings = (bkRes.bookings || []).filter(
+                (b) => b.status === "CONFIRMED" || b.status === "PENDING" || b.status === "CHECKED_IN"
+            );
+            const newHolidays = Array.isArray(holRes) ? holRes : [];
+
+            setTimetables(newTimetables);
+            setBookings(newBookings);
+            if (newHolidays.length > 0) {
+                setHolidays(newHolidays);
+            }
+
+            // Save to client cache
+            scheduleCacheRef.current.set(cacheKey, {
+                timetables: newTimetables,
+                bookings: newBookings,
+                holidays: newHolidays.length > 0 ? newHolidays : holidays,
+            });
         }
         catch (err) {
             console.error("Failed to load schedule data", err);
@@ -213,67 +245,29 @@ function CalendarView() {
             setIsLoading(false);
             setIsRefreshing(false);
         }
-    }, [selectedResourceId, weekDays]);
+    }, [selectedResourceId, weekDays, holidays]);
+
+    // Single authoritative effect to trigger data loading
     useEffect(() => {
         if (!selectedResourceId)
             return;
-        let ignore = false;
-        const startAt = weekDays[0].toISOString();
-        const endAt = new Date(weekDays[6].getTime() + 86400000 - 1).toISOString();
-        Promise.all([
-            api.timetables.list({
-                resourceId: selectedResourceId,
-                startAt,
-                endAt,
-            }),
-            api.bookings.list({
-                resourceId: selectedResourceId,
-                startAt,
-                endAt,
-                limit: 100,
-            }),
-            api.holidays.list({
-                startDate: startAt,
-                endDate: endAt,
-            }).catch(() => []),
-        ]).then(([ttRes, bkRes, holRes]) => {
-            if (!ignore) {
-                setTimetables(ttRes.entries || []);
-                setBookings((bkRes.bookings || []).filter((b) => b.status === "CONFIRMED" ||
-                    b.status === "PENDING" ||
-                    b.status === "CHECKED_IN"));
-                setHolidays(Array.isArray(holRes) ? holRes : []);
-                setIsLoading(false);
-                setIsRefreshing(false);
-            }
-        }).catch((err) => {
-            if (!ignore) {
-                console.error("Failed to load schedule data", err);
-                setIsLoading(false);
-                setIsRefreshing(false);
-            }
-        });
-        return () => {
-            ignore = true;
-        };
+        loadScheduleData();
     }, [selectedResourceId, weekDays]);
+
     // Navigation handlers
     const handlePrev = () => {
-        setIsLoading(true);
         const delta = viewMode === "week" ? 7 : 1;
         const nextDate = new Date(selectedDate);
         nextDate.setUTCDate(selectedDate.getUTCDate() - delta);
         setSelectedDate(nextDate);
     };
     const handleNext = () => {
-        setIsLoading(true);
         const delta = viewMode === "week" ? 7 : 1;
         const nextDate = new Date(selectedDate);
         nextDate.setUTCDate(selectedDate.getUTCDate() + delta);
         setSelectedDate(nextDate);
     };
     const handleToday = () => {
-        setIsLoading(true);
         setSelectedDate(new Date());
     };
     // Open booking modal for a specific day and hour (hour is in facility local timezone)
@@ -310,8 +304,9 @@ function CalendarView() {
     };
     // Callback on successful booking
     const handleBookingSuccess = () => {
+        scheduleCacheRef.current.clear();
         setIsRefreshing(true);
-        loadScheduleData();
+        loadScheduleData(true);
     };
     // Operating hours (08:00 to 20:00 in facility local timezone)
     const facilityTz = resolveReservationTimezone(activeResource);
@@ -1014,7 +1009,8 @@ const timeLabel = `${String(hour).padStart(2, "0")}:00`; // hour is already in f
           open={isDeclareHolidayOpen}
           onClose={() => setIsDeclareHolidayOpen(false)}
           onSuccess={() => {
-            loadScheduleData();
+            scheduleCacheRef.current.clear();
+            loadScheduleData(true);
           }}
         />
 

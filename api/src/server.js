@@ -19,6 +19,12 @@ import { connectRedis, disconnectRedis, getRedisState } from './config/redis.js'
 import { logger } from './utils/logger.js';
 import { autoReleaseScheduler } from './schedulers/autoRelease.scheduler.js';
 import { HolidayService } from './services/holiday.service.js';
+import {
+  Reservation,
+  TimetableEntry,
+  Holiday,
+  Resource,
+} from './models/index.js';
 
 let server = null;
 let isShuttingDown = false;
@@ -47,6 +53,16 @@ async function startServer() {
 
       // Start autonomous background auto-release worker
       autoReleaseScheduler.start();
+
+      // Ensure MongoDB indexes are built and synchronized for optimal query performance
+      Promise.all([
+        Reservation.syncIndexes().catch(() => {}),
+        TimetableEntry.syncIndexes().catch(() => {}),
+        Holiday.syncIndexes().catch(() => {}),
+        Resource.syncIndexes().catch(() => {}),
+      ])
+        .then(() => logger.info('MongoDB performance indexes synchronized successfully'))
+        .catch((idxErr) => logger.warn('[MongoDB] Index synchronization note:', idxErr?.message));
 
       // Ensure official public holidays (e.g. Christmas Day 2026-12-25) are seeded
       try {

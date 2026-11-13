@@ -173,5 +173,15 @@ HolidaySchema.index(
   { name: 'idx_holiday_date_name_scope' }
 );
 
+// Fast range lookup for calendar views and booking conflict checks
+HolidaySchema.index(
+  { status: 1, startAt: 1, endAt: 1 },
+  { name: 'idx_holiday_status_start_end' }
+);
+HolidaySchema.index(
+  { status: 1, isUniversityClosed: 1, startAt: 1, endAt: 1 },
+  { name: 'idx_holiday_closed_start_end' }
+);
+
 export const Holiday =
   mongoose.models.Holiday || mongoose.model('Holiday', HolidaySchema);
