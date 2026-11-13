@@ -665,4 +665,61 @@ export const api = {
             });
         },
     },
+    // Holiday Management (Feature 1)
+    holidays: {
+        list: async (params = {}) => {
+            const searchParams = new URLSearchParams();
+            if (params.year) searchParams.set("year", String(params.year));
+            if (params.startDate) searchParams.set("startDate", params.startDate);
+            if (params.endDate) searchParams.set("endDate", params.endDate);
+            if (params.date) searchParams.set("date", params.date);
+            if (params.category) searchParams.set("category", params.category);
+            const query = searchParams.toString();
+            return request(`/holidays${query ? `?${query}` : ""}`);
+        },
+        declare: async (payload) => {
+            return request("/holidays/declare", {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+        },
+        revoke: async (id, reason) => {
+            return request(`/holidays/${id}/revoke`, {
+                method: "PATCH",
+                body: JSON.stringify({ reason }),
+            });
+        },
+        syncPublic: async (year) => {
+            return request("/holidays/sync-public", {
+                method: "POST",
+                body: JSON.stringify({ year }),
+            });
+        },
+    },
+    // Emergency HOD Booking (Feature 2)
+    emergencyBookings: {
+        search: async (params = {}) => {
+            const searchParams = new URLSearchParams();
+            if (params.startAt) searchParams.set("startAt", params.startAt);
+            if (params.endAt) searchParams.set("endAt", params.endAt);
+            if (params.requiredCapacity) searchParams.set("requiredCapacity", String(params.requiredCapacity));
+            if (params.requiredEquipment) searchParams.set("requiredEquipment", params.requiredEquipment);
+            if (params.isMeeting !== undefined) searchParams.set("isMeeting", String(params.isMeeting));
+            if (params.timezone) searchParams.set("timezone", params.timezone);
+            const query = searchParams.toString();
+            return request(`/emergency-bookings/search${query ? `?${query}` : ""}`);
+        },
+        request: async (payload) => {
+            return request("/emergency-bookings/request", {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+        },
+        action: async (id, payload) => {
+            return request(`/emergency-bookings/${id}/action`, {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+        },
+    },
 };

@@ -191,6 +191,16 @@ export class ReservationService {
           }
         }
 
+        // Step B.3: Role-based room access validation (Feature 2)
+        if (Array.isArray(resource.allowedRoles) && resource.allowedRoles.length > 0) {
+          const hasAllowedRole = user.roles.some((r) => resource.allowedRoles.includes(r));
+          if (!hasAllowedRole) {
+            throw new ForbiddenError(
+              `Users with role(s) [${user.roles.join(', ')}] are not permitted to reserve this facility (${resource.roomCategory || resource.name}).`
+            );
+          }
+        }
+
         // Step C: Authoritative Availability check within transaction
         const availability = await AvailabilityService.checkAvailability({
           resourceId: resource._id,
@@ -203,7 +213,8 @@ export class ReservationService {
           if (
             availability.reason === 'RESERVATION_CONFLICT' ||
             availability.reason === 'BLACKOUT_CONFLICT' ||
-            availability.reason === 'TIMETABLE_CONFLICT'
+            availability.reason === 'TIMETABLE_CONFLICT' ||
+            availability.reason === 'HOLIDAY_CONFLICT'
           ) {
             throw new ConflictError(
               availability.message || 'The requested time slot conflicts with an existing reservation, blackout, or timetable',
@@ -785,7 +796,7 @@ export class ReservationService {
   /**
    * Lists reservations with flexible filtering, range overlap queries, and pagination.
    */
-  static async listReservations(filter) {
+  static async listReservations(filter, requestingUser = null) {
     // Reconcile concluded reservations whose end date has passed to COMPLETED
     try {
       await Reservation.updateMany(
@@ -837,8 +848,8 @@ export class ReservationService {
 
     const [items, total] = await Promise.all([
       Reservation.find(query)
-        .populate('resource', 'name code location status capacity')
-        .populate('user', 'firstName lastName email department roles')
+        .populate('resource', 'name code location status capacity block roomCategory')
+        .populate('user', 'firstName lastName name email department roles')
         .sort({ startAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -846,8 +857,41 @@ export class ReservationService {
       Reservation.countDocuments(query),
     ]);
 
+    // Feature 3 Section C: Privacy enforcement for student view
+    const isPrivileged =
+      requestingUser?.roles?.includes(UserRole.ADMIN) ||
+      requestingUser?.roles?.includes(UserRole.FACILITY_MANAGER) ||
+      requestingUser?.roles?.includes(UserRole.DEPARTMENT_HEAD) ||
+      requestingUser?.roles?.includes(UserRole.FACULTY);
+
+    const sanitizedItems = items.map((item) => {
+      const isOwner =
+        requestingUser &&
+        item.user &&
+        (item.user._id?.toString() === requestingUser.id ||
+          item.user.toString() === requestingUser.id);
+
+      if (isPrivileged || isOwner) {
+        return item;
+      }
+
+      // Redact another student's identity and private notes
+      return {
+        _id: item._id,
+        resource: item.resource,
+        startAt: item.startAt,
+        endAt: item.endAt,
+        timezone: item.timezone,
+        status: item.status,
+        title: 'Occupied / Reserved',
+        description: null,
+        user: null,
+        isOccupied: true,
+      };
+    });
+
     return {
-      items,
+      items: sanitizedItems,
       total,
       page,
       limit,

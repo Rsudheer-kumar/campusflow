@@ -132,25 +132,34 @@ export async function listBookings(req, res, next) {
 
     const isPrivileged =
       req.user.roles.includes(UserRole.ADMIN) ||
-      req.user.roles.includes(UserRole.FACILITY_MANAGER);
+      req.user.roles.includes(UserRole.FACILITY_MANAGER) ||
+      req.user.roles.includes(UserRole.DEPARTMENT_HEAD) ||
+      req.user.roles.includes(UserRole.FACULTY);
 
     if (isPrivileged) {
       // Privileged users can list any userId (or all if not specified)
       filterUserId = userId;
+    } else if (resourceId) {
+      // Student is querying a resource's schedule (e.g. for calendar/availability)
+      // Pass resourceId, and listReservations will sanitize other users' personal info
+      filterUserId = undefined;
     } else {
-      // Normal users can only list their own bookings, ignore query.userId
+      // Student viewing their own bookings list
       filterUserId = req.user.id;
     }
 
-    const result = await ReservationService.listReservations({
-      resourceId: resourceId,
-      userId: filterUserId,
-      status: status,
-      startAt: startAt,
-      endAt: endAt,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-    });
+    const result = await ReservationService.listReservations(
+      {
+        resourceId: resourceId,
+        userId: filterUserId,
+        status: status,
+        startAt: startAt,
+        endAt: endAt,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
+      req.user
+    );
 
     sendSuccess(res, result, 200);
   } catch (error) {

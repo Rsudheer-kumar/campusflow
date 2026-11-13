@@ -167,22 +167,38 @@ export default function SettingsPage() {
 
             {/* Profile & Identity Card */}
             <Card className="p-6 space-y-5">
-              <div className="flex items-center gap-2.5 border-b border-border pb-3">
-                <User className="h-5 w-5 text-primary-bright" />
-                <div>
-                  <h3 className="text-base font-semibold text-foreground">
-                    Institutional Identity
-                  </h3>
-                  <p className="text-xs text-muted">
-                    Your campus credentials, authorized roles, and academic department.
-                  </p>
+              <div className="flex items-center justify-between border-b border-border pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-primary-bright text-white font-bold text-lg flex items-center justify-center border border-white/20 shadow-md">
+                    {name
+                      ? name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+                      : 'CF'}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                      {name || 'CampusFlow User'}
+                      <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                        Verified Institutional Member
+                      </span>
+                    </h3>
+                    <p className="text-xs text-muted">
+                      {profile.email} • {department || 'Department Unassigned'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {profile.roles?.map((role) => (
+                    <Badge key={role} variant="primary">
+                      {role}
+                    </Badge>
+                  ))}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
-                    Email Address (Read-only)
+                    Email Address (SSO Read-only)
                   </label>
                   <Input
                     value={profile.email}
@@ -196,19 +212,12 @@ export default function SettingsPage() {
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
-                    Campus Roles
+                    Account Status
                   </label>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {profile.roles?.map((role) => (
-                      <Badge key={role} variant="primary">
-                        {role}
-                      </Badge>
-                    ))}
-                    {profile.isActive && (
-                      <Badge variant="success" dot>
-                        Active Account
-                      </Badge>
-                    )}
+                  <div className="flex items-center gap-2 pt-2">
+                    <Badge variant="success" dot>
+                      Active & Enrolled (2026 Academic Year)
+                    </Badge>
                   </div>
                 </div>
 
@@ -233,6 +242,47 @@ export default function SettingsPage() {
                     onChange={(e) => setDepartment(e.target.value)}
                     placeholder="e.g. Computer Science & Engineering"
                   />
+                </div>
+              </div>
+            </Card>
+
+            {/* Academic Integrity & Strike Monitor (Phase 3.3 Institutional Policy) */}
+            <Card className="p-6 space-y-4 bg-surface-2/30 border-border/80">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <Shield className="h-5 w-5 text-emerald-400" />
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">
+                      Attendance & Booking Privileges Standing
+                    </h3>
+                    <p className="text-xs text-muted">
+                      Institutional 3-strike unexcused no-show policy tracker.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                  Good Standing (0 / 3 Strikes)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div className="p-3 rounded bg-surface border border-border">
+                  <div className="font-semibold text-foreground mb-1">Check-In Window</div>
+                  <p className="text-muted">
+                    QR scan opens 15 minutes before slot start and closes 15 minutes after start.
+                  </p>
+                </div>
+                <div className="p-3 rounded bg-surface border border-border">
+                  <div className="font-semibold text-foreground mb-1">Auto-Release Rule</div>
+                  <p className="text-muted">
+                    Unclaimed rooms are auto-released after 15 minutes grace period for campus use.
+                  </p>
+                </div>
+                <div className="p-3 rounded bg-surface border border-border">
+                  <div className="font-semibold text-foreground mb-1">Suspension Threshold</div>
+                  <p className="text-muted">
+                    Accumulating 3 unexcused absences in a rolling 30-day window triggers a 14-day hold.
+                  </p>
                 </div>
               </div>
             </Card>

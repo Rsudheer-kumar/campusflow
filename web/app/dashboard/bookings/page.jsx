@@ -69,6 +69,10 @@ export default function BookingsPage() {
     };
     // Filter bookings based on active tab with past completion calculation
     const nowMs = Date.now();
+    const pendingBookings = useMemo(() => {
+        return bookings.filter((b) => b.status === "PENDING" && new Date(b.endAt).getTime() > nowMs);
+    }, [bookings, nowMs]);
+
     const activeBookings = useMemo(() => {
         return bookings.filter((b) => (b.status === "CONFIRMED" || b.status === "PENDING" || b.status === "CHECKED_IN") && new Date(b.endAt).getTime() > nowMs);
     }, [bookings, nowMs]);
@@ -82,11 +86,12 @@ export default function BookingsPage() {
     }, [bookings]);
 
     const filteredBookings = useMemo(() => {
+        if (filterTab === "PENDING") return pendingBookings;
         if (filterTab === "ACTIVE") return activeBookings;
         if (filterTab === "COMPLETED") return completedBookings;
         if (filterTab === "CANCELLED") return cancelledBookings;
         return bookings;
-    }, [bookings, filterTab, activeBookings, completedBookings, cancelledBookings]);
+    }, [bookings, filterTab, pendingBookings, activeBookings, completedBookings, cancelledBookings]);
     return (<div className="min-h-full py-8 grid-background">
       <PageContainer className="space-y-6">
         <PageHeader title="My Reservations & Bookings" description="View, manage, and inspect your campus facility reservations and booking history." action={<Link href="/dashboard/calendar">
@@ -101,6 +106,11 @@ export default function BookingsPage() {
             ? "bg-primary text-white"
             : "bg-surface text-muted hover:text-foreground border border-border")}>
             All Reservations ({bookings.length})
+          </button>
+          <button type="button" onClick={() => setFilterTab("PENDING")} className={cn("px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors", filterTab === "PENDING"
+            ? "bg-amber-500 text-black font-semibold"
+            : "bg-surface text-muted hover:text-foreground border border-border")}>
+            Pending Approval ({pendingBookings.length})
           </button>
           <button type="button" onClick={() => setFilterTab("ACTIVE")} className={cn("px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors", filterTab === "ACTIVE"
             ? "bg-primary text-white"
@@ -181,6 +191,16 @@ export default function BookingsPage() {
                       <span className="font-mono text-xs font-bold text-primary-bright px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
                         {resCode}
                       </span>
+                      {resObj?.block && (
+                        <span className="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-surface-2 border border-border text-foreground">
+                          {resObj.block.replace('_', ' ')}
+                        </span>
+                      )}
+                      {booking.priority === 'EMERGENCY' && (
+                        <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                          ⚡ Emergency Meeting
+                        </span>
+                      )}
                       <Badge variant={displayStatus === "COMPLETED"
                         ? "neutral"
                         : displayStatus === "CONFIRMED" || displayStatus === "CHECKED_IN"
@@ -208,6 +228,26 @@ export default function BookingsPage() {
                         </span>)}
                       <span className="text-xs text-muted">ID: {booking._id.slice(-6)}</span>
                     </div>
+
+                    {/* Holiday Review Notification Banner */}
+                    {booking.holidayReview?.requiresReview && (
+                      <div className="p-2.5 rounded bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
+                        <span>
+                          <strong>Campus Closure Review:</strong> {booking.holidayReview.reason || "This booking falls on a newly declared campus closure date."}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Relocation Notification Banner */}
+                    {booking.relocationAudit?.displacedAt && (
+                      <div className="p-2.5 rounded bg-blue-500/10 border border-blue-500/30 text-xs text-blue-300 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-blue-400" />
+                        <span>
+                          <strong>Relocation Scheduled:</strong> {booking.relocationAudit.reason} ({booking.relocationAudit.alternativeOffered})
+                        </span>
+                      </div>
+                    )}
 
                     {/* Booking Title */}
                     <div>

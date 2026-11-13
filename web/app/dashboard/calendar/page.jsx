@@ -27,6 +27,11 @@ function CalendarView() {
         return new Date();
     });
     const [viewMode, setViewMode] = useState("week");
+    // Filter & Holiday states (Features 1 & 2)
+    const [selectedBlock, setSelectedBlock] = useState("ALL");
+    const [selectedCategory, setSelectedCategory] = useState("ALL");
+    const [holidays, setHolidays] = useState([]);
+
     // Data state
     const [timetables, setTimetables] = useState([]);
     const [bookings, setBookings] = useState([]);
@@ -162,7 +167,7 @@ function CalendarView() {
         }
         return days;
     }, [selectedDate]);
-    // 2. Fetch Timetable Entries and Bookings for the selected resource and date range
+    // 2. Fetch Timetable Entries, Bookings, and Holidays for the selected resource and date range
     const loadScheduleData = useCallback(async () => {
         if (!selectedResourceId)
             return;
@@ -170,7 +175,7 @@ function CalendarView() {
         try {
             const startAt = weekDays[0].toISOString();
             const endAt = new Date(weekDays[6].getTime() + 86400000 - 1).toISOString();
-            const [ttRes, bkRes] = await Promise.all([
+            const [ttRes, bkRes, holRes] = await Promise.all([
                 api.timetables.list({
                     resourceId: selectedResourceId,
                     startAt,
@@ -182,12 +187,17 @@ function CalendarView() {
                     endAt,
                     limit: 100,
                 }),
+                api.holidays.list({
+                    startDate: startAt,
+                    endDate: endAt,
+                }).catch(() => []),
             ]);
             setTimetables(ttRes.entries || []);
             // Include all active bookings holding capacity on calendar (CONFIRMED, PENDING, CHECKED_IN)
             setBookings((bkRes.bookings || []).filter((b) => b.status === "CONFIRMED" ||
                 b.status === "PENDING" ||
                 b.status === "CHECKED_IN"));
+            setHolidays(Array.isArray(holRes) ? holRes : []);
         }
         catch (err) {
             console.error("Failed to load schedule data", err);
@@ -215,12 +225,17 @@ function CalendarView() {
                 endAt,
                 limit: 100,
             }),
-        ]).then(([ttRes, bkRes]) => {
+            api.holidays.list({
+                startDate: startAt,
+                endDate: endAt,
+            }).catch(() => []),
+        ]).then(([ttRes, bkRes, holRes]) => {
             if (!ignore) {
                 setTimetables(ttRes.entries || []);
                 setBookings((bkRes.bookings || []).filter((b) => b.status === "CONFIRMED" ||
                     b.status === "PENDING" ||
                     b.status === "CHECKED_IN"));
+                setHolidays(Array.isArray(holRes) ? holRes : []);
                 setIsLoading(false);
                 setIsRefreshing(false);
             }
@@ -400,6 +415,19 @@ function CalendarView() {
         }
         return { ttMap, bkMap };
     }, [timetables, bookings]);
+    const filteredResources = useMemo(() => {
+        return resources.filter((r) => {
+            const matchBlock =
+                selectedBlock === "ALL" ||
+                r.block === selectedBlock ||
+                (r.location?.building && r.location.building.toLowerCase().includes(selectedBlock.replace('_', ' ').toLowerCase()));
+            const matchCategory =
+                selectedCategory === "ALL" ||
+                r.roomCategory === selectedCategory;
+            return matchBlock && matchCategory;
+        });
+    }, [resources, selectedBlock, selectedCategory]);
+
     // Current timestamp snapshot for interval calculations
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
@@ -413,12 +441,57 @@ function CalendarView() {
               New Booking
             </Button>}/>
 
+        {/* Four-Block Campus Navigation Pills (Feature 2) */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted mr-1">Campus Block:</span>
+          {[
+            { id: "ALL", label: "All Blocks" },
+            { id: "BLOCK_A", label: "Block A (Comp Labs)" },
+            { id: "BLOCK_B", label: "Block B (ECE/EE Labs)" },
+            { id: "BLOCK_C", label: "Block C (Chemical Labs)" },
+            { id: "BLOCK_D", label: "Block D (Faculty & HOD)" },
+          ].map((blk) => (
+            <button
+              key={blk.id}
+              type="button"
+              onClick={() => {
+                setSelectedBlock(blk.id);
+                const nextRes = resources.find(r => blk.id === "ALL" || r.block === blk.id);
+                if (nextRes) handleResourceChange(nextRes._id);
+              }}
+              className={cn(
+                "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                selectedBlock === blk.id
+                  ? "bg-primary text-white"
+                  : "bg-surface text-muted hover:text-foreground border border-border"
+              )}
+            >
+              {blk.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Holiday Announcement Banner (Feature 1) */}
+        {holidays.length > 0 && (
+          <div className="p-3.5 rounded-[var(--radius-md)] bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center gap-3">
+            <span className="text-lg">🏛️</span>
+            <div>
+              <div className="font-semibold text-xs uppercase tracking-wider text-amber-200">
+                Official Campus Holiday / Institutional Closure
+              </div>
+              <div className="text-xs mt-0.5">
+                {holidays.map(h => `${h.name} (${h.date}): ${h.reason}`).join(" • ")}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Top Control Bar: Resource Selector, Date Navigation, View Mode */}
         <Card className="p-4 bg-surface-2/40 border-border/80">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Resource Selector Dropdown */}
             <div className="w-full md:w-80">
-              <Select label="Selected Campus Facility" value={selectedResourceId} onChange={(e) => handleResourceChange(e.target.value)} options={resources.map((r) => ({
+              <Select label="Selected Campus Facility" value={selectedResourceId} onChange={(e) => handleResourceChange(e.target.value)} options={(filteredResources.length > 0 ? filteredResources : resources).map((r) => ({
             value: r._id,
             label: `${r.name} (${r.code}) — ${r.location?.building}${r.status === "MAINTENANCE" ? " ⚠️ [Under Maintenance]" : ""}`,
         }))} disabled={resources.length === 0}/>
