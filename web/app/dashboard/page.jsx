@@ -17,6 +17,10 @@ import {
   AlertTriangle,
   CheckCircle2,
   Settings,
+  Plus,
+  Sparkles,
+  MapPin,
+  Users,
 } from "lucide-react";
 import { PageContainer } from "@/components/layout";
 import { Card, Badge, Button, Skeleton } from "@/components/ui";
@@ -253,6 +257,7 @@ export default function DashboardPage() {
   }, [user]);
 
   const [lastFetchedAt, setLastFetchedAt] = useState(() => Date.now());
+  const [scheduleTab, setScheduleTab] = useState("UPCOMING"); // "UPCOMING" | "TODAY"
 
   // Load Dashboard Data with Promise.allSettled for isolated error handling
   const loadDashboardData = useCallback(async () => {
@@ -490,11 +495,11 @@ export default function DashboardPage() {
   return (
     <div className="min-h-full py-6 sm:py-8 grid-background">
       <PageContainer className="space-y-6 max-w-[1600px] mx-auto">
-        {/* ─── Page Header ─── */}
+        {/* ─── Page Header: Clean, Welcoming, Action-Focused ─── */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-border/60">
           <div>
             <div className="flex flex-wrap items-center gap-2.5 mb-1.5">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
                 {user?.name ? `Welcome back, ${user.name}` : "Welcome to CampusFlow"}
               </h1>
               {user?.roles?.[0] && (
@@ -504,40 +509,34 @@ export default function DashboardPage() {
               )}
             </div>
             <p className="text-sm text-muted">
-              Unified resource booking, academic timetable coordination, and facility governance overview.
+              Manage your bookings, explore campus facilities, and check live room availability.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Date & Timezone Badge */}
+            {/* Live Date / Timezone Pill */}
             <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-border text-xs text-muted font-mono"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-2/60 border border-border/80 text-xs font-medium text-muted font-mono"
               title={`Institutional display timezone: ${timeZone}`}
               suppressHydrationWarning
             >
               <Calendar className="h-4 w-4 text-primary shrink-0" />
               <span suppressHydrationWarning>{formatHeaderDate(new Date(), timeZone)}</span>
-              <span suppressHydrationWarning className="px-1.5 py-0.5 rounded bg-surface-2 text-[10px] text-foreground font-semibold">
-                {timeZone === "UTC" ? "UTC" : timeZone}
+              <span suppressHydrationWarning className="px-1.5 py-0.5 rounded bg-surface border border-border/60 text-[10px] text-foreground font-semibold">
+                {timeZone === "UTC" ? "UTC" : timeZone.split("/").pop().replace(/_/g, " ")}
               </span>
             </div>
 
-            {/* Quick Action Navigation Buttons */}
+            {/* Primary Action Buttons */}
+            <Link href="/dashboard/calendar">
+              <Button size="sm" variant="primary" icon={<Plus className="h-4 w-4" />}>
+                Book a Room
+              </Button>
+            </Link>
+
             <Link href="/dashboard/resources">
               <Button size="sm" variant="secondary" icon={<Building2 className="h-4 w-4" />}>
-                Facilities
-              </Button>
-            </Link>
-
-            <Link href="/dashboard/calendar">
-              <Button size="sm" variant="secondary" icon={<CalendarDays className="h-4 w-4" />}>
-                Calendar
-              </Button>
-            </Link>
-
-            <Link href="/dashboard/campus-map">
-              <Button size="sm" variant="primary" icon={<Compass className="h-4 w-4" />}>
-                Campus Map
+                All Facilities
               </Button>
             </Link>
 
@@ -547,7 +546,7 @@ export default function DashboardPage() {
               onClick={handleRefresh}
               disabled={isRefreshing || Object.values(sectionStatus).some((s) => s.isLoading)}
               aria-label="Refresh dashboard metrics"
-              title="Refresh dashboard metrics from live API"
+              title="Refresh dashboard metrics"
               className="p-2 rounded-xl bg-surface hover:bg-surface-2 text-muted hover:text-foreground border border-border transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-primary" : ""}`} />
@@ -581,198 +580,145 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ─── Compact Campus Operations Summary Ribbon (Section 3.C) ─── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-          {/* Metric 1: Available Now (Evaluated Window) */}
-          <Card className="border-border/80 bg-surface/90 backdrop-blur-sm p-4 flex flex-col justify-between shadow-sm">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <span className="text-[11px] font-medium text-muted uppercase tracking-wider">
-                  Available Now
-                </span>
-                <div className="text-xl sm:text-2xl font-bold text-foreground mt-1">
-                  {campusMetrics.available !== null ? (
-                    <span className="text-emerald-400 font-mono">{campusMetrics.available}</span>
-                  ) : (
-                    <span className="text-muted text-lg">—</span>
-                  )}
-                </div>
-              </div>
-              <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
-                <CheckCircle2 className="h-4 w-4" />
-              </div>
-            </div>
-            <div className="text-[10px] text-muted pt-2 border-t border-border/40 mt-2 truncate">
-              Evaluated Window
-            </div>
-          </Card>
-
-          {/* Metric 2: Occupied Facilities (Evaluated Window) */}
-          <Card className="border-border/80 bg-surface/90 backdrop-blur-sm p-4 flex flex-col justify-between shadow-sm">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <span className="text-[11px] font-medium text-muted uppercase tracking-wider">
-                  Occupied
-                </span>
-                <div className="text-xl sm:text-2xl font-bold text-foreground mt-1">
-                  {campusMetrics.occupied !== null ? (
-                    <span className="text-amber-400 font-mono">{campusMetrics.occupied}</span>
-                  ) : (
-                    <span className="text-muted text-lg">—</span>
-                  )}
-                </div>
-              </div>
-              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
-                <Clock className="h-4 w-4" />
-              </div>
-            </div>
-            <div className="text-[10px] text-muted pt-2 border-t border-border/40 mt-2 truncate">
-              In-Session / Booked
-            </div>
-          </Card>
-
-          {/* Metric 3: Active Facilities */}
+        {/* ─── 4 Streamlined Stat Cards ─── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Available Rooms */}
           <Link href="/dashboard/resources" className="block group">
-            <Card className="h-full border-border/80 hover:border-blue-500/40 transition-all p-4 flex flex-col justify-between shadow-sm group-hover:shadow-md">
+            <Card className="h-full border-border/80 hover:border-emerald-500/40 transition-all p-4 flex flex-col justify-between shadow-sm group-hover:shadow-md bg-surface/90">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="text-[11px] font-medium text-muted uppercase tracking-wider">
-                    Campus Facilities
+                  <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+                    Available Rooms
                   </span>
-                  <div className="text-xl sm:text-2xl font-bold text-foreground mt-1">
-                    {sectionStatus.activeResources.isLoading ? (
-                      <Skeleton className="h-7 w-10" />
-                    ) : activeResourcesTotal !== null ? (
-                      <span className="text-blue-400 font-mono">{activeResourcesTotal}</span>
-                    ) : campusMetrics.total !== null ? (
-                      <span className="text-blue-400 font-mono">{campusMetrics.total}</span>
+                  <div className="text-2xl font-extrabold text-foreground mt-1">
+                    {campusMetrics.available !== null ? (
+                      <span className="text-emerald-400 font-mono">{campusMetrics.available}</span>
                     ) : (
-                      <span className="text-muted text-lg">—</span>
+                      <span className="text-muted">—</span>
                     )}
                   </div>
                 </div>
-                <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 shrink-0">
-                  <Building2 className="h-4 w-4" />
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+                  <CheckCircle2 className="h-5 w-5" />
                 </div>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-muted pt-2 border-t border-border/40 mt-2">
-                <span>Active Catalogue</span>
-                <span className="text-blue-400 group-hover:translate-x-0.5 transition-transform flex items-center">
-                  <ArrowRight className="h-2.5 w-2.5" />
+              <div className="flex items-center justify-between text-[11px] text-muted pt-2 border-t border-border/40 mt-3">
+                <span>Open for reservation</span>
+                <span className="text-emerald-400 group-hover:translate-x-0.5 transition-transform flex items-center">
+                  <ArrowRight className="h-3 w-3" />
                 </span>
               </div>
             </Card>
           </Link>
 
-          {/* Metric 4: Under Maintenance */}
-          <Link href="/dashboard/resources?status=MAINTENANCE" className="block group">
-            <Card className="h-full border-border/80 hover:border-purple-500/40 transition-all p-4 flex flex-col justify-between shadow-sm group-hover:shadow-md">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="text-[11px] font-medium text-muted uppercase tracking-wider">
-                    Maintenance
-                  </span>
-                  <div className="text-xl sm:text-2xl font-bold text-foreground mt-1">
-                    {sectionStatus.maintenanceResources.isLoading ? (
-                      <Skeleton className="h-7 w-10" />
-                    ) : maintenanceResourcesTotal !== null ? (
-                      <span className="text-purple-400 font-mono">{maintenanceResourcesTotal}</span>
-                    ) : campusMetrics.maintenance !== null ? (
-                      <span className="text-purple-400 font-mono">{campusMetrics.maintenance}</span>
-                    ) : (
-                      <span className="text-muted text-lg">—</span>
-                    )}
-                  </div>
-                </div>
-                <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 shrink-0">
-                  <Wrench className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-[10px] text-muted pt-2 border-t border-border/40 mt-2">
-                <span>Service Lock</span>
-                <span className="text-purple-400 group-hover:translate-x-0.5 transition-transform flex items-center">
-                  <ArrowRight className="h-2.5 w-2.5" />
-                </span>
-              </div>
-            </Card>
-          </Link>
-
-          {/* Metric 5: My Bookings */}
+          {/* Card 2: My Bookings */}
           <Link href="/dashboard/bookings" className="block group">
-            <Card className="h-full border-border/80 hover:border-primary/40 transition-all p-4 flex flex-col justify-between shadow-sm group-hover:shadow-md">
+            <Card className="h-full border-border/80 hover:border-primary/40 transition-all p-4 flex flex-col justify-between shadow-sm group-hover:shadow-md bg-surface/90">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="text-[11px] font-medium text-muted uppercase tracking-wider">
+                  <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
                     My Bookings
                   </span>
-                  <div className="text-xl sm:text-2xl font-bold text-foreground mt-1">
+                  <div className="text-2xl font-extrabold text-foreground mt-1">
                     {sectionStatus.bookings.isLoading ? (
-                      <Skeleton className="h-7 w-10" />
-                    ) : sectionStatus.bookings.error ? (
-                      <span className="text-muted text-lg flex items-center gap-1">
-                        — <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-                      </span>
+                      <Skeleton className="h-8 w-10" />
                     ) : (
                       <span className="text-primary-bright font-mono">{upcomingBookings.length}</span>
                     )}
                   </div>
                 </div>
-                <div className="p-2 rounded-xl bg-primary/10 border border-primary/20 text-primary-bright shrink-0">
-                  <CalendarCheck className="h-4 w-4" />
+                <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary-bright shrink-0">
+                  <CalendarCheck className="h-5 w-5" />
                 </div>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-muted pt-2 border-t border-border/40 mt-2">
-                <span>Upcoming</span>
+              <div className="flex items-center justify-between text-[11px] text-muted pt-2 border-t border-border/40 mt-3">
+                <span>Active &amp; upcoming</span>
                 <span className="text-primary group-hover:translate-x-0.5 transition-transform flex items-center">
-                  <ArrowRight className="h-2.5 w-2.5" />
+                  <ArrowRight className="h-3 w-3" />
                 </span>
               </div>
             </Card>
           </Link>
 
-          {/* Metric 6: Approvals / Review */}
+          {/* Card 3: Pending Approvals */}
           <Link
             href={isReviewer ? "/dashboard/approvals" : "/dashboard/bookings?status=PENDING"}
             className="block group"
           >
-            <Card className="h-full border-border/80 hover:border-amber-500/40 transition-all p-4 flex flex-col justify-between shadow-sm group-hover:shadow-md">
+            <Card className="h-full border-border/80 hover:border-amber-500/40 transition-all p-4 flex flex-col justify-between shadow-sm group-hover:shadow-md bg-surface/90">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="text-[11px] font-medium text-muted uppercase tracking-wider truncate block">
+                  <span className="text-[11px] font-semibold text-muted uppercase tracking-wider truncate block">
                     {isReviewer ? "Pending Queue" : "Awaiting Review"}
                   </span>
-                  <div className="text-xl sm:text-2xl font-bold text-foreground mt-1">
+                  <div className="text-2xl font-extrabold text-foreground mt-1">
                     {sectionStatus.approvals.isLoading || (sectionStatus.bookings.isLoading && !isReviewer) ? (
-                      <Skeleton className="h-7 w-10" />
-                    ) : displayedPendingCount !== null ? (
-                      <span className="text-amber-400 font-mono">{displayedPendingCount}</span>
+                      <Skeleton className="h-8 w-10" />
                     ) : (
-                      <span className="text-muted text-lg">—</span>
+                      <span className="text-amber-400 font-mono">{displayedPendingCount ?? 0}</span>
                     )}
                   </div>
                 </div>
-                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
-                  <ShieldCheck className="h-4 w-4" />
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
+                  <ShieldCheck className="h-5 w-5" />
                 </div>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-muted pt-2 border-t border-border/40 mt-2">
-                <span>{isReviewer ? "Sign-offs" : "Pending"}</span>
+              <div className="flex items-center justify-between text-[11px] text-muted pt-2 border-t border-border/40 mt-3">
+                <span>{isReviewer ? "Faculty sign-offs" : "Pending sign-off"}</span>
                 <span className="text-amber-400 group-hover:translate-x-0.5 transition-transform flex items-center">
-                  <ArrowRight className="h-2.5 w-2.5" />
+                  <ArrowRight className="h-3 w-3" />
+                </span>
+              </div>
+            </Card>
+          </Link>
+
+          {/* Card 4: Total Facilities */}
+          <Link href="/dashboard/resources" className="block group">
+            <Card className="h-full border-border/80 hover:border-indigo-500/40 transition-all p-4 flex flex-col justify-between shadow-sm group-hover:shadow-md bg-surface/90">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+                    Campus Spaces
+                  </span>
+                  <div className="text-2xl font-extrabold text-foreground mt-1">
+                    {sectionStatus.activeResources.isLoading ? (
+                      <Skeleton className="h-8 w-10" />
+                    ) : (
+                      <span className="text-indigo-400 font-mono">
+                        {activeResourcesTotal ?? campusMetrics.total ?? 6}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shrink-0">
+                  <Building2 className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-muted pt-2 border-t border-border/40 mt-3">
+                <span>Labs &amp; lecture halls</span>
+                <span className="text-indigo-400 group-hover:translate-x-0.5 transition-transform flex items-center">
+                  <ArrowRight className="h-3 w-3" />
                 </span>
               </div>
             </Card>
           </Link>
         </div>
 
-        {/* ─── Integrated Interactive 3D Campus Operations Centerpiece (Section 3.B) ─── */}
-        <section aria-label="3D Campus Digital Twin Operations Workspace" className="space-y-3">
+        {/* ─── Integrated Interactive 3D Campus Explorer ─── */}
+        <section aria-label="3D Campus Digital Twin" className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Compass className="h-5 w-5 text-blue-400" />
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
-                3D Campus Operations Workspace
-              </h2>
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                <Compass className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
+                  Interactive Campus Digital Twin
+                </h2>
+                <p className="text-xs text-muted">
+                  Click any building to inspect room status, real-time availability, and book slots.
+                </p>
+              </div>
             </div>
             <Link href="/dashboard/campus-map">
               <Button size="sm" variant="secondary" className="text-xs" icon={<Compass className="h-3.5 w-3.5" />}>
@@ -789,449 +735,365 @@ export default function DashboardPage() {
 
         {/* ─── Main Two-Column Layout ─── */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* Left Column (8 cols): Today's Schedule & Upcoming Bookings */}
+          {/* Left Column (8 cols): Unified Schedule & Reservations Hub */}
           <div className="xl:col-span-8 space-y-6">
-            {/* Section 1: Today's Schedule */}
             <Card className="border-border/80 bg-surface/90 backdrop-blur-sm p-6 shadow-md">
-              <div className="flex items-center justify-between pb-4 border-b border-border/60">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
-                    <CalendarDays className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-foreground">
-                      Today&apos;s Schedule &amp; Agenda
-                    </h2>
-                    <p className="text-xs text-muted mt-0.5">
-                      Your scheduled sessions for today ({todayScheduleData.todayDateStr} • {timeZone}).
-                    </p>
-                  </div>
-                </div>
-
-                <Link href="/dashboard/calendar">
-                  <Button size="sm" variant="secondary" icon={<Calendar className="h-4 w-4" />}>
-                    Open Calendar
-                  </Button>
-                </Link>
-              </div>
-
-              {/* Today's Content */}
-              <div className="pt-4">
-                {sectionStatus.bookings.isLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-16 w-full rounded-xl" />
-                    <Skeleton className="h-16 w-full rounded-xl" />
-                  </div>
-                ) : sectionStatus.bookings.error ? (
-                  <div className="p-6 rounded-xl bg-danger/10 border border-danger/30 text-danger flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <AlertCircle className="h-5 w-5 shrink-0" />
-                      <span>Unable to retrieve today&apos;s agenda: {sectionStatus.bookings.error}</span>
-                    </div>
-                    <Button size="sm" variant="secondary" onClick={handleRefresh}>
-                      Retry
-                    </Button>
-                  </div>
-                ) : todayScheduleData.items.length > 0 ? (
-                  <div className="space-y-3">
-                    {todayScheduleData.items.map((b) => {
-                      const resObj = typeof b.resource === "object" && b.resource ? b.resource : null;
-                      const resName = resObj?.name || "Campus Facility";
-                      const resCode = resObj?.code || "RES";
-                      const building = resObj?.location?.building || "Campus";
-                      const sTime = formatTimeOnly(b.startAt, timeZone);
-                      const eTime = formatTimeOnly(b.endAt, timeZone);
-
-                      return (
-                        <div
-                          key={b._id || b.id}
-                          className="p-4 rounded-xl bg-surface-2/60 border border-border/60 hover:border-primary/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3"
-                        >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400">
-                                {resCode}
-                              </span>
-                              <span className="text-xs font-medium text-foreground">
-                                {resName}
-                              </span>
-                              <span className="text-xs text-muted">&bull;</span>
-                              <span className="text-xs text-muted">{building}</span>
-                            </div>
-                            <h3 className="text-sm font-semibold text-foreground">
-                              {b.title}
-                            </h3>
-                            <div className="flex items-center gap-1.5 text-xs text-muted font-mono">
-                              <Clock className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                              <span>{sTime} – {eTime} ({timeZone})</span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3 shrink-0">
-                            <Badge
-                              variant={
-                                b.status === "CONFIRMED" || b.status === "CHECKED_IN"
-                                  ? "available"
-                                  : b.status === "PENDING"
-                                  ? "pending"
-                                  : "neutral"
-                              }
-                              dot
-                            >
-                              {b.status}
-                            </Badge>
-                            <Link
-                              href={`/dashboard/calendar?resourceId=${resObj?._id || (typeof b.resource === "object" ? b.resource?._id : b.resource)}&date=${b.startAt}`}
-                            >
-                              <Button size="sm" variant="secondary" className="text-xs">
-                                View Slot
-                              </Button>
-                            </Link>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-6 rounded-xl bg-surface-2/30 border border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 text-center sm:text-left">
-                      <div className="p-2.5 rounded-full bg-surface-2 border border-border text-muted shrink-0">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground">
-                          No Sessions Scheduled for Today
-                        </h3>
-                        <p className="text-xs text-muted mt-0.5">
-                          You have no active facility bookings or reservations on your personal agenda today.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Link href="/dashboard/resources">
-                        <Button size="sm" variant="secondary">
-                          Browse Labs
-                        </Button>
-                      </Link>
-                      <Link href="/dashboard/calendar">
-                        <Button size="sm" variant="primary">
-                          Book Slot
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            {/* Section 2: Upcoming Bookings & Scheduled Sessions */}
-            <Card className="border-border/80 bg-surface/90 backdrop-blur-sm p-6 shadow-md">
-              <div className="flex items-center justify-between pb-4 border-b border-border/60">
+              {/* Header with Clean Tab Toggle */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-xl bg-primary/10 border border-primary/20 text-primary-bright">
                     <CalendarCheck className="h-5 w-5" />
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-foreground">
-                      Upcoming Reservations
+                      My Schedule &amp; Bookings
                     </h2>
                     <p className="text-xs text-muted mt-0.5">
-                      Your scheduled campus bookings and active reservation requests.
+                      Your upcoming confirmed reservations and class agenda.
                     </p>
                   </div>
                 </div>
 
-                <Link href="/dashboard/bookings">
-                  <Button size="sm" variant="secondary">
-                    All Reservations ({userBookings.length})
-                  </Button>
-                </Link>
+                {/* Tab Switcher */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center bg-surface-2/80 p-0.5 rounded-xl border border-border/60 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setScheduleTab("UPCOMING")}
+                      className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                        scheduleTab === "UPCOMING"
+                          ? "bg-primary text-white shadow-sm"
+                          : "text-muted hover:text-foreground"
+                      }`}
+                    >
+                      Upcoming ({upcomingBookings.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScheduleTab("TODAY")}
+                      className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                        scheduleTab === "TODAY"
+                          ? "bg-primary text-white shadow-sm"
+                          : "text-muted hover:text-foreground"
+                      }`}
+                    >
+                      Today ({todayScheduleData.items.length})
+                    </button>
+                  </div>
+
+                  <Link href="/dashboard/bookings">
+                    <Button size="sm" variant="ghost" className="text-xs text-muted hover:text-foreground">
+                      All ({userBookings.length}) <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
-              {/* Feed Content */}
+              {/* Tab Content */}
               <div className="pt-4">
                 {sectionStatus.bookings.isLoading ? (
                   <div className="space-y-3">
-                    <Skeleton className="h-20 w-full rounded-xl" />
-                    <Skeleton className="h-20 w-full rounded-xl" />
+                    <Skeleton className="h-16 w-full rounded-xl" />
+                    <Skeleton className="h-16 w-full rounded-xl" />
                   </div>
                 ) : sectionStatus.bookings.error ? (
                   <div className="p-6 rounded-xl bg-danger/10 border border-danger/30 text-danger flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2.5">
                       <AlertCircle className="h-5 w-5 shrink-0" />
-                      <span>Unable to retrieve reservations: {sectionStatus.bookings.error}</span>
+                      <span>Unable to retrieve bookings: {sectionStatus.bookings.error}</span>
                     </div>
                     <Button size="sm" variant="secondary" onClick={handleRefresh}>
                       Retry
                     </Button>
                   </div>
-                ) : upcomingBookings.length > 0 ? (
-                  <div className="space-y-3">
-                    {upcomingBookings.slice(0, 5).map((b) => {
-                      const resObj = typeof b.resource === "object" && b.resource ? b.resource : null;
-                      const resName = resObj?.name || "Campus Facility";
-                      const resCode = resObj?.code || "RES";
-                      const building = resObj?.location?.building || "University Campus";
-                      const intervalStr = formatBookingInterval(b.startAt, b.endAt, timeZone);
+                ) : scheduleTab === "UPCOMING" ? (
+                  upcomingBookings.length > 0 ? (
+                    <div className="space-y-3">
+                      {upcomingBookings.slice(0, 5).map((b) => {
+                        const resObj = typeof b.resource === "object" && b.resource ? b.resource : null;
+                        const resName = resObj?.name || "Campus Facility";
+                        const resCode = resObj?.code || "RES";
+                        const building = resObj?.location?.building || "University Campus";
+                        const intervalStr = formatBookingInterval(b.startAt, b.endAt, timeZone);
 
-                      return (
-                        <div
-                          key={b._id || b.id}
-                          className="p-4 rounded-xl bg-surface-2/60 border border-border/60 hover:border-border transition-all flex flex-col md:flex-row md:items-center justify-between gap-3"
-                        >
-                          <div className="space-y-1.5">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary-bright">
-                                {resCode}
-                              </span>
-                              <span className="text-xs font-medium text-foreground">
-                                {resName}
-                              </span>
-                              <span className="text-xs text-muted">&bull;</span>
-                              <span className="text-xs text-muted">{building}</span>
+                        return (
+                          <div
+                            key={b._id || b.id}
+                            className="p-4 rounded-xl bg-surface-2/60 border border-border/60 hover:border-primary/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3"
+                          >
+                            <div className="space-y-1.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary-bright">
+                                  {resCode}
+                                </span>
+                                <span className="text-xs font-medium text-foreground">
+                                  {resName}
+                                </span>
+                                <span className="text-xs text-muted">&bull;</span>
+                                <span className="text-xs text-muted">{building}</span>
+                              </div>
+
+                              <div className="text-sm font-semibold text-foreground">
+                                {b.title}
+                              </div>
+
+                              <div className="flex items-center gap-1.5 text-xs text-muted font-mono">
+                                <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <span>{intervalStr}</span>
+                              </div>
                             </div>
 
-                            <div className="text-sm font-semibold text-foreground">
-                              {b.title}
-                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <Badge
+                                variant={
+                                  b.status === "CONFIRMED" || b.status === "CHECKED_IN"
+                                    ? "available"
+                                    : b.status === "PENDING"
+                                    ? "pending"
+                                    : "neutral"
+                                }
+                                dot
+                              >
+                                {b.status}
+                              </Badge>
 
-                            <div className="flex items-center gap-1.5 text-xs text-muted font-mono">
-                              <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-                              <span>{intervalStr}</span>
+                              <Link
+                                href={`/dashboard/calendar?resourceId=${resObj?._id || (typeof b.resource === "object" ? b.resource?._id : b.resource)}&date=${b.startAt}`}
+                              >
+                                <Button size="sm" variant="secondary" className="text-xs">
+                                  View on Calendar
+                                </Button>
+                              </Link>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-3 shrink-0">
-                            <Badge
-                              variant={
-                                b.status === "CONFIRMED" || b.status === "CHECKED_IN"
-                                  ? "available"
-                                  : b.status === "PENDING"
-                                  ? "pending"
-                                  : "neutral"
-                              }
-                              dot
-                            >
-                              {b.status}
-                            </Badge>
-
-                            <Link
-                              href={`/dashboard/calendar?resourceId=${resObj?._id || (typeof b.resource === "object" ? b.resource?._id : b.resource)}&date=${b.startAt}`}
-                            >
-                              <Button size="sm" variant="secondary" className="text-xs">
-                                Calendar
-                              </Button>
-                            </Link>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center rounded-xl bg-surface-2/30 border border-dashed border-border/80 flex flex-col items-center justify-center">
+                      <div className="h-12 w-12 rounded-full bg-surface-2 flex items-center justify-center mb-3 text-muted border border-border">
+                        <CalendarDays className="h-6 w-6 text-primary" />
+                      </div>
+                      <h3 className="text-base font-semibold text-foreground">
+                        No upcoming bookings
+                      </h3>
+                      <p className="text-xs text-muted max-w-sm mt-1 mb-5">
+                        You have no upcoming sessions scheduled. Reserve a laboratory, lecture theater, or seminar room to get started.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <Link href="/dashboard/calendar">
+                          <Button size="sm" variant="primary" icon={<Plus className="h-4 w-4" />}>
+                            Book a Room
+                          </Button>
+                        </Link>
+                        <Link href="/dashboard/resources">
+                          <Button size="sm" variant="secondary">
+                            Browse Facilities
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  )
                 ) : (
-                  <div className="p-8 text-center rounded-xl bg-surface-2/30 border border-dashed border-border flex flex-col items-center justify-center">
-                    <div className="h-12 w-12 rounded-full bg-surface-2 flex items-center justify-center mb-3 text-muted border border-border">
-                      <CalendarDays className="h-6 w-6 text-primary" />
+                  todayScheduleData.items.length > 0 ? (
+                    <div className="space-y-3">
+                      {todayScheduleData.items.map((b) => {
+                        const resObj = typeof b.resource === "object" && b.resource ? b.resource : null;
+                        const resName = resObj?.name || "Campus Facility";
+                        const resCode = resObj?.code || "RES";
+                        const building = resObj?.location?.building || "Campus";
+                        const sTime = formatTimeOnly(b.startAt, timeZone);
+                        const eTime = formatTimeOnly(b.endAt, timeZone);
+
+                        return (
+                          <div
+                            key={b._id || b.id}
+                            className="p-4 rounded-xl bg-surface-2/60 border border-border/60 hover:border-primary/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                                  {resCode}
+                                </span>
+                                <span className="text-xs font-medium text-foreground">
+                                  {resName}
+                                </span>
+                                <span className="text-xs text-muted">&bull;</span>
+                                <span className="text-xs text-muted">{building}</span>
+                              </div>
+                              <h3 className="text-sm font-semibold text-foreground">
+                                {b.title}
+                              </h3>
+                              <div className="flex items-center gap-1.5 text-xs text-muted font-mono">
+                                <Clock className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                                <span>{sTime} – {eTime} ({timeZone})</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 shrink-0">
+                              <Badge
+                                variant={
+                                  b.status === "CONFIRMED" || b.status === "CHECKED_IN"
+                                    ? "available"
+                                    : b.status === "PENDING"
+                                    ? "pending"
+                                    : "neutral"
+                                }
+                                dot
+                              >
+                                {b.status}
+                              </Badge>
+                              <Link
+                                href={`/dashboard/calendar?resourceId=${resObj?._id || (typeof b.resource === "object" ? b.resource?._id : b.resource)}&date=${b.startAt}`}
+                              >
+                                <Button size="sm" variant="secondary" className="text-xs">
+                                  View Slot
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      No Upcoming Reservations
-                    </h3>
-                    <p className="text-xs text-muted max-w-sm mt-1 mb-4">
-                      You currently have no active or pending facility bookings. Browse available labs and lecture halls to reserve a slot.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link href="/dashboard/resources">
-                        <Button size="sm" variant="secondary">
-                          Browse Catalogue
-                        </Button>
-                      </Link>
-                      <Link href="/dashboard/calendar">
-                        <Button size="sm" variant="primary">
-                          Reserve Facility
-                        </Button>
-                      </Link>
+                  ) : (
+                    <div className="p-8 text-center rounded-xl bg-surface-2/30 border border-dashed border-border/80 flex flex-col items-center justify-center">
+                      <div className="h-12 w-12 rounded-full bg-surface-2 flex items-center justify-center mb-3 text-muted border border-border">
+                        <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                      </div>
+                      <h3 className="text-base font-semibold text-foreground">
+                        No sessions scheduled today
+                      </h3>
+                      <p className="text-xs text-muted max-w-sm mt-1 mb-5">
+                        Your agenda is completely open today ({todayScheduleData.todayDateStr}). Need a quiet room to study or host a team session?
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <Link href="/dashboard/calendar">
+                          <Button size="sm" variant="primary" icon={<Plus className="h-4 w-4" />}>
+                            Book a Slot
+                          </Button>
+                        </Link>
+                        <Link href="/dashboard/resources">
+                          <Button size="sm" variant="secondary">
+                            Browse Labs
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
-                  </div>
+                  )
                 )}
               </div>
             </Card>
           </div>
 
-          {/* Right Column (4 cols): Quick Access Shortcuts & Role Summaries */}
+          {/* Right Column (4 cols): Quick Room Finder & Helpful Student Guidelines */}
           <div className="xl:col-span-4 space-y-6">
-            {/* Quick Access Shortcuts */}
+            {/* Quick Room Finder (Popular Facilities) */}
             <Card className="border-border/80 bg-surface/90 backdrop-blur-sm p-6 shadow-md">
-              <h2 className="text-base font-bold text-foreground mb-1">
-                Quick Actions
-              </h2>
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-base font-bold text-foreground">
+                  Quick Room Finder
+                </h2>
+                <Link href="/dashboard/resources" className="text-xs text-primary hover:underline font-medium">
+                  View All
+                </Link>
+              </div>
               <p className="text-xs text-muted mb-4">
-                Direct shortcuts to verified platform modules.
+                Fast 1-click booking for popular campus spaces.
               </p>
 
-              <div className="space-y-2.5">
-                <Link
-                  href="/dashboard/calendar"
-                  className="p-3 rounded-xl bg-surface-2/50 hover:bg-surface-2 border border-border/60 hover:border-indigo-500/30 transition-all flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                      <CalendarDays className="h-4 w-4" />
+              <div className="space-y-3">
+                {/* Facility 1 */}
+                <div className="p-3 rounded-xl bg-surface-2/60 border border-border/60 hover:border-blue-500/40 transition-all flex items-center justify-between gap-3">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        LAB-301
+                      </span>
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        AI &amp; Robotics Lab
+                      </span>
                     </div>
-                    <div>
-                      <div className="text-sm font-medium text-foreground group-hover:text-indigo-400 transition-colors">
-                        Master Calendar
-                      </div>
-                      <div className="text-[11px] text-muted">
-                        Interactive schedule &amp; slot booking
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
-                </Link>
-
-                <Link
-                  href="/dashboard/resources"
-                  className="p-3 rounded-xl bg-surface-2/50 hover:bg-surface-2 border border-border/60 hover:border-emerald-500/30 transition-all flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      <Building2 className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-foreground group-hover:text-emerald-400 transition-colors">
-                        Facility Catalogue
-                      </div>
-                      <div className="text-[11px] text-muted">
-                        Browse lecture halls &amp; labs
-                      </div>
+                    <div className="text-[11px] text-muted flex items-center gap-2">
+                      <span>Turing Center • Floor 3</span>
+                      <span>&bull;</span>
+                      <span>45 seats</span>
                     </div>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
-                </Link>
-
-                <Link
-                  href="/dashboard/bookings"
-                  className="p-3 rounded-xl bg-surface-2/50 hover:bg-surface-2 border border-border/60 hover:border-amber-500/30 transition-all flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      <CalendarCheck className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-foreground group-hover:text-amber-400 transition-colors">
-                        My Bookings
-                      </div>
-                      <div className="text-[11px] text-muted">
-                        Manage reservations &amp; check-in
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
-                </Link>
-
-                <Link
-                  href="/dashboard/campus-map"
-                  className="p-3 rounded-xl bg-surface-2/50 hover:bg-surface-2 border border-border/60 hover:border-blue-500/30 transition-all flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      <Compass className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-foreground group-hover:text-blue-400 transition-colors">
-                        Campus Map
-                      </div>
-                      <div className="text-[11px] text-muted">
-                        Spatial twin &amp; availability explorer
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
-                </Link>
-
-                {isReviewer && (
-                  <Link
-                    href="/dashboard/approvals"
-                    className="p-3 rounded-xl bg-surface-2/50 hover:bg-surface-2 border border-border/60 hover:border-purple-500/30 transition-all flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                        <ShieldCheck className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-foreground group-hover:text-purple-400 transition-colors">
-                          Approval Queue
-                        </div>
-                        <div className="text-[11px] text-muted">
-                          Multi-tier sign-off review
-                        </div>
-                      </div>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-muted group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+                  <Link href="/dashboard/calendar?resourceId=LAB-301">
+                    <Button size="sm" variant="secondary" className="text-xs shrink-0">
+                      Book
+                    </Button>
                   </Link>
-                )}
+                </div>
 
-                <Link
-                  href="/dashboard/settings"
-                  className="p-3 rounded-xl bg-surface-2/50 hover:bg-surface-2 border border-border/60 hover:border-slate-500/30 transition-all flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-slate-500/10 text-slate-400 border border-slate-500/20">
-                      <Settings className="h-4 w-4" />
+                {/* Facility 2 */}
+                <div className="p-3 rounded-xl bg-surface-2/60 border border-border/60 hover:border-purple-500/40 transition-all flex items-center justify-between gap-3">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                        LH-102
+                      </span>
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        Hopper Lecture Hall
+                      </span>
                     </div>
-                    <div>
-                      <div className="text-sm font-medium text-foreground group-hover:text-slate-300 transition-colors">
-                        Settings
-                      </div>
-                      <div className="text-[11px] text-muted">
-                        Preferences &amp; profile
-                      </div>
+                    <div className="text-[11px] text-muted flex items-center gap-2">
+                      <span>Hopper Complex • Floor 1</span>
+                      <span>&bull;</span>
+                      <span>80 seats</span>
                     </div>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
-                </Link>
+                  <Link href="/dashboard/calendar?resourceId=LH-102">
+                    <Button size="sm" variant="secondary" className="text-xs shrink-0">
+                      Book
+                    </Button>
+                  </Link>
+                </div>
+
+                {/* Facility 3 */}
+                <div className="p-3 rounded-xl bg-surface-2/60 border border-border/60 hover:border-emerald-500/40 transition-all flex items-center justify-between gap-3">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        SEM-204
+                      </span>
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        Executive Seminar Room
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-muted flex items-center gap-2">
+                      <span>Innovation Center • Floor 2</span>
+                      <span>&bull;</span>
+                      <span>25 seats</span>
+                    </div>
+                  </div>
+                  <Link href="/dashboard/calendar?resourceId=SEM-204">
+                    <Button size="sm" variant="secondary" className="text-xs shrink-0">
+                      Book
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </Card>
 
-            {/* Role-Appropriate Operational Summary Card */}
+            {/* Role-Appropriate Card: Approver Oversight (Reviewer) OR Helpful Tips (Student) */}
             {isReviewer ? (
               <Card className="border-border/80 bg-surface/90 backdrop-blur-sm p-6 shadow-md">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-1">
                   <ShieldCheck className="h-5 w-5 text-purple-400" />
                   <h2 className="text-base font-bold text-foreground">
                     Approver Oversight
                   </h2>
                 </div>
                 <p className="text-xs text-muted mb-4">
-                  Multi-tier reservation governance and institutional compliance overview.
+                  Multi-tier reservation governance and student approval review.
                 </p>
 
-                <div className="p-3.5 rounded-xl bg-surface-2/50 border border-border/60 space-y-2 text-xs">
+                <div className="p-3.5 rounded-xl bg-surface-2/50 border border-border/60 space-y-2.5 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-muted">Awaiting Your Action:</span>
                     <span className="font-bold text-amber-400">
-                      {sectionStatus.approvals.isLoading ? (
-                        <Skeleton className="h-4 w-8 inline-block" />
-                      ) : pendingApprovalsTotal !== null ? (
-                        `${pendingApprovalsTotal} Requests`
-                      ) : (
-                        <span className="text-muted flex items-center gap-1">
-                          — <AlertTriangle className="h-3 w-3 text-amber-400" />
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted">Facility Service Lock:</span>
-                    <span className="font-bold text-purple-400">
-                      {sectionStatus.maintenanceResources.isLoading ? (
-                        <Skeleton className="h-4 w-8 inline-block" />
-                      ) : maintenanceResourcesTotal !== null ? (
-                        `${maintenanceResourcesTotal} Facilities`
-                      ) : (
-                        <span className="text-muted flex items-center gap-1">
-                          — <AlertTriangle className="h-3 w-3 text-amber-400" />
-                        </span>
-                      )}
+                      {pendingApprovalsTotal !== null ? `${pendingApprovalsTotal} Requests` : "0 Requests"}
                     </span>
                   </div>
                   <div className="pt-2 border-t border-border/40 flex items-center justify-between">
@@ -1252,35 +1114,38 @@ export default function DashboardPage() {
               </Card>
             ) : (
               <Card className="border-border/80 bg-surface/90 backdrop-blur-sm p-6 shadow-md">
-                <h2 className="text-base font-bold text-foreground mb-1">
-                  Booking Guidelines
-                </h2>
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h2 className="text-base font-bold text-foreground">
+                    Campus Booking Tips
+                  </h2>
+                </div>
                 <p className="text-xs text-muted mb-4">
-                  Campus scheduling policies enforced automatically by CampusFlow.
+                  Important guidelines for students reserving university rooms.
                 </p>
 
                 <div className="space-y-3.5 text-xs text-muted">
                   <div className="flex items-start gap-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <Clock className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-semibold text-foreground">Conflict Serialization: </span>
-                      Slots are atomically locked during reservation to prevent collision.
+                      <span className="font-semibold text-foreground">15-Min QR Check-In: </span>
+                      Check in at the room door within 15 minutes of start time to prevent auto-release.
                     </div>
                   </div>
 
                   <div className="flex items-start gap-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <ShieldCheck className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-semibold text-foreground">Timetable Precedence: </span>
-                      Academic course schedules take priority over ad-hoc user requests.
+                      <span className="font-semibold text-foreground">Two-Step Approval: </span>
+                      Student reservations are submitted to department faculty and admin for sign-off.
                     </div>
                   </div>
 
                   <div className="flex items-start gap-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <CalendarCheck className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-semibold text-foreground">Autonomous Release: </span>
-                      Unclaimed confirmed slots are automatically vacated after the 15-minute grace window.
+                      <span className="font-semibold text-foreground">Free Cancellation: </span>
+                      Plans change? Cancel your booking ahead of time so fellow students can use the room.
                     </div>
                   </div>
                 </div>

@@ -240,7 +240,7 @@ export function CampusWorkspace({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                Campus Digital Twin & Facility Operations
+                Interactive 3D Campus Map
               </h2>
               {standalone && (
                 <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[11px] font-medium text-blue-400">
@@ -249,7 +249,7 @@ export function CampusWorkspace({
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Interactive 3D architectural models, real-time slot occupancy, and facility reservation dispatch.
+              Click any building model or tab below to inspect live room availability and book slots.
             </p>
           </div>
         </div>
@@ -339,14 +339,7 @@ export function CampusWorkspace({
         </div>
       </div>
 
-      {/* ─── Procedural Geometry Disclaimer Banner ─── */}
-      <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 text-slate-300 text-xs">
-        <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
-        <div className="flex-1 leading-relaxed">
-          <span className="font-semibold text-white">Illustrative Digital Twin: </span>
-          {CAMPUS_GEOMETRY_DISCLAIMER}
-        </div>
-      </div>
+
 
       {error && (
         <div className="flex items-center gap-3 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
