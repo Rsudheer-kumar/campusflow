@@ -428,8 +428,9 @@ export const api = {
             const booking = (res && "booking" in res && res.booking) ? res.booking : res;
             return { booking };
         },
-        getCheckInToken: async (id) => {
-            return request(`/bookings/${id}/check-in-token`, {
+        getCheckInToken: async (id, options = {}) => {
+            const query = options.allowEarly ? "?allowEarly=true" : "";
+            return request(`/bookings/${id}/check-in-token${query}`, {
                 method: "POST",
             });
         },

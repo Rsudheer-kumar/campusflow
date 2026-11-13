@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { CalendarCheck, Plus, Clock, Building2, Calendar, AlertCircle, QrCode, LogOut, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { CalendarCheck, Plus, Clock, Building2, Calendar, AlertCircle, QrCode, LogOut, ShieldCheck, CheckCircle2, DoorClosed } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/layout";
 import { Card, Badge, Button, Modal, Textarea, Skeleton, EmptyState } from "@/components/ui";
 import { CheckInModal } from "@/components/bookings/check-in-modal";
+import { DoorPlaqueModal } from "@/components/bookings/door-plaque-modal";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn, resolveReservationTimezone } from "@/lib/utils";
@@ -15,6 +16,8 @@ export default function BookingsPage() {
     const [filterTab, setFilterTab] = useState("ALL");
     // Check-In & Checkout Modal state
     const [checkInModalBooking, setCheckInModalBooking] = useState(null);
+    // Door Plaque Modal state
+    const [doorPlaqueResource, setDoorPlaqueResource] = useState(null);
     // Cancellation Modal state
     const [cancelModalBooking, setCancelModalBooking] = useState(null);
     const [cancelReason, setCancelReason] = useState("");
@@ -316,6 +319,11 @@ export default function BookingsPage() {
                         Check In
                       </Button>)}
 
+                    {/* View Official Door QR Plaque */}
+                    {resObj && (<Button variant="outline" size="sm" icon={<DoorClosed className="h-4 w-4"/>} onClick={() => setDoorPlaqueResource(resObj)} title="View Door QR Plaque">
+                        Door Plaque
+                      </Button>)}
+
                     {/* Phase 3.3 Early Checkout Trigger */}
                     {canCheckout && (<Button variant="secondary" size="sm" icon={<LogOut className="h-4 w-4"/>} onClick={() => setCheckInModalBooking(booking)}>
                         Checkout
@@ -373,6 +381,17 @@ export default function BookingsPage() {
 
         {/* Phase 3.3 Check-In & Checkout Modal */}
         <CheckInModal open={!!checkInModalBooking} onClose={() => setCheckInModalBooking(null)} booking={checkInModalBooking} onSuccess={fetchBookings}/>
+
+        {/* Facility Door QR Plaque Modal */}
+        <DoorPlaqueModal open={!!doorPlaqueResource} onClose={() => setDoorPlaqueResource(null)} resource={doorPlaqueResource} onLaunchCameraScan={(res) => {
+          const matchedBooking = bookings.find(b => {
+            const bResId = typeof b.resource === "object" ? b.resource?._id : b.resource;
+            return bResId === res._id;
+          });
+          if (matchedBooking) {
+            setCheckInModalBooking(matchedBooking);
+          }
+        }}/>
       </PageContainer>
     </div>);
 }

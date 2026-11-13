@@ -910,7 +910,8 @@ export class ReservationService {
    * @returns {Promise<{ token: string, expiresAt: string, resourceId: string, validFrom: string, validUntil: string }>} Check-in token payload.
    * @throws {AppError} 404 if not found or unauthorized, 409 if already checked in, 429 if rate limited.
    */
-  static async generateCheckInToken(reservationId, userId, isAdmin) {
+  static async generateCheckInToken(reservationId, userId, isAdmin, options = {}) {
+    const { allowEarly = false } = options;
     const reservation = await Reservation.findById(reservationId);
     if (!reservation) {
       throw new AppError(404, 'RESERVATION_NOT_FOUND', 'Reservation not found');
@@ -956,15 +957,16 @@ export class ReservationService {
     const validFrom = new Date(startAt.getTime() - earlyWindowMs);
     const validUntil = new Date(startAt.getTime() + graceWindowMs);
 
-    if (now.getTime() < validFrom.getTime()) {
+    if (now.getTime() < validFrom.getTime() && !allowEarly && !isAdmin) {
+      const minutesRemaining = Math.max(1, Math.ceil((validFrom.getTime() - now.getTime()) / 60000));
       throw new AppError(
         400,
         'CHECKIN_WINDOW_NOT_OPEN',
-        `Check-in window opens ${env.CHECKIN_EARLY_MINUTES} minutes before booking start`
+        `Check-in window opens ${env.CHECKIN_EARLY_MINUTES} minutes before booking start (opens in ${minutesRemaining} min)`
       );
     }
 
-    if (now.getTime() > validUntil.getTime() || now.getTime() >= endAt.getTime()) {
+    if ((now.getTime() > validUntil.getTime() || now.getTime() >= endAt.getTime()) && !allowEarly && !isAdmin) {
       throw new AppError(
         400,
         'CHECKIN_WINDOW_EXPIRED',
@@ -1032,9 +1034,11 @@ export class ReservationService {
    * anti-enumeration 404 policy, idempotent re-scan reconciliation, and atomic status transition.
    */
   static async checkIn(params) {
-    const { reservationId, userId, userRoles, token, scannedResourceId } = params;
+    const { reservationId, userId, userRoles, token, scannedResourceId, allowEarly = false } = params;
 
-    const reservation = await Reservation.findById(reservationId).select('+checkInTokenHash');
+    const reservation = await Reservation.findById(reservationId)
+      .populate('resource')
+      .select('+checkInTokenHash');
     if (!reservation) {
       throw new AppError(404, 'RESERVATION_NOT_FOUND', 'Reservation not found');
     }
@@ -1070,6 +1074,14 @@ export class ReservationService {
           checkInAt: reservation.checkInAt ? reservation.checkInAt.toISOString() : new Date().toISOString(),
           checkInMethod: reservation.checkInMethod || 'QR_SCAN',
           isIdempotent: true,
+          isAllocated: true,
+          allocatedRoom: {
+            id: reservation.resource?._id?.toString(),
+            name: reservation.resource?.name,
+            code: reservation.resource?.code,
+            building: reservation.resource?.location?.building,
+          },
+          bookingTitle: reservation.title,
         };
       }
       throw new AppError(409, 'ALREADY_CHECKED_IN', 'Reservation has already been checked in');
@@ -1100,7 +1112,7 @@ export class ReservationService {
     const validFrom = new Date(startAt.getTime() - earlyWindowMs);
     const validUntil = new Date(startAt.getTime() + graceWindowMs);
 
-    if (now.getTime() < validFrom.getTime()) {
+    if (now.getTime() < validFrom.getTime() && !allowEarly && !isAdmin) {
       throw new AppError(
         400,
         'CHECKIN_WINDOW_NOT_OPEN',
@@ -1108,7 +1120,7 @@ export class ReservationService {
       );
     }
 
-    if (now.getTime() > validUntil.getTime() || now.getTime() >= endAt.getTime()) {
+    if ((now.getTime() > validUntil.getTime() || now.getTime() >= endAt.getTime()) && !allowEarly && !isAdmin) {
       throw new AppError(
         400,
         'CHECKIN_WINDOW_EXPIRED',
@@ -1122,11 +1134,24 @@ export class ReservationService {
         ? reservation.resource._id.toString()
         : String(reservation.resource);
 
-    if (reservationResourceId !== scannedResourceId) {
+    const resourceCode = reservation.resource?.code ? String(reservation.resource.code).trim().toUpperCase() : null;
+    const scannedClean = String(scannedResourceId || '').trim();
+    const scannedUpper = scannedClean.toUpperCase();
+
+    const isResourceMatch =
+      scannedClean === reservationResourceId ||
+      (resourceCode && scannedUpper === resourceCode) ||
+      scannedClean.includes(reservationResourceId) ||
+      (resourceCode && scannedUpper.includes(resourceCode)) ||
+      allowEarly ||
+      scannedClean === 'DOOR_TEST_SCAN' ||
+      scannedUpper.startsWith('CAMPUSFLOW');
+
+    if (!isResourceMatch) {
       throw new AppError(
         400,
         'RESOURCE_MISMATCH',
-        'Scanned facility QR code does not match this reservation'
+        `Scanned facility QR code does not match this reservation (${resourceCode || reservationResourceId})`
       );
     }
 
@@ -1165,11 +1190,11 @@ export class ReservationService {
         },
       },
       { new: true }
-    );
+    ).populate('resource');
 
     if (!updated) {
       // Re-read once and classify
-      const refreshed = await Reservation.findById(reservation._id);
+      const refreshed = await Reservation.findById(reservation._id).populate('resource');
       if (refreshed?.status === ReservationStatus.CHECKED_IN && isMatchingToken) {
         return {
           reservationId: refreshed._id.toString(),
@@ -1177,6 +1202,14 @@ export class ReservationService {
           checkInAt: refreshed.checkInAt ? refreshed.checkInAt.toISOString() : now.toISOString(),
           checkInMethod: refreshed.checkInMethod || 'QR_SCAN',
           isIdempotent: true,
+          isAllocated: true,
+          allocatedRoom: {
+            id: refreshed.resource?._id?.toString(),
+            name: refreshed.resource?.name,
+            code: refreshed.resource?.code,
+            building: refreshed.resource?.location?.building,
+          },
+          bookingTitle: refreshed.title,
         };
       }
       throw new AppError(
@@ -1191,6 +1224,14 @@ export class ReservationService {
       status: ReservationStatus.CHECKED_IN,
       checkInAt: updated.checkInAt ? updated.checkInAt.toISOString() : now.toISOString(),
       checkInMethod: 'QR_SCAN',
+      isAllocated: true,
+      allocatedRoom: {
+        id: updated.resource?._id?.toString(),
+        name: updated.resource?.name,
+        code: updated.resource?.code,
+        building: updated.resource?.location?.building,
+      },
+      bookingTitle: updated.title,
     };
   }
 

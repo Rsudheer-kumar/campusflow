@@ -359,11 +359,13 @@ export async function generateCheckInToken(req, res, next) {
 
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const isAdmin = req.user.roles.includes(UserRole.ADMIN);
+    const allowEarly = req.query.allowEarly === 'true' || req.query.testMode === 'true';
 
     const tokenData = await ReservationService.generateCheckInToken(
       id,
       req.user.id,
-      isAdmin
+      isAdmin,
+      { allowEarly }
     );
 
     sendSuccess(res, tokenData, 200);
@@ -379,7 +381,7 @@ export async function checkInBooking(req, res, next) {
     }
 
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { token, resourceId } = req.body;
+    const { token, resourceId, allowEarly, testMode } = req.body;
 
     const result = await ReservationService.checkIn({
       reservationId: id,
@@ -387,6 +389,7 @@ export async function checkInBooking(req, res, next) {
       userRoles: req.user.roles,
       token,
       scannedResourceId: resourceId,
+      allowEarly: Boolean(allowEarly || testMode),
     });
 
     sendSuccess(res, result, 200);

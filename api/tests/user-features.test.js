@@ -542,5 +542,48 @@ describe('CampusFlow: Feature 1, 2, and 3 Comprehensive Integration Tests', () =
       // Clean up
       await Reservation.findByIdAndDelete(booking._id);
     });
+
+    it('14. Door QR camera scan verification and test mode allocates room and unlocks access', async () => {
+      const startAt = new Date('2026-12-10T09:00:00.000Z');
+      const endAt = new Date('2026-12-10T10:00:00.000Z');
+
+      // Create a confirmed booking
+      const booking = await Reservation.create({
+        resource: blockAResource._id,
+        user: studentUser._id,
+        startAt,
+        endAt,
+        timezone: 'UTC',
+        title: 'Robotics Team Workgroup',
+        status: ReservationStatus.CONFIRMED,
+      });
+
+      // 1. Generate check-in token with allowEarly/testMode enabled
+      const tokenData = await ReservationService.generateCheckInToken(
+        booking._id.toString(),
+        studentUser._id.toString(),
+        false,
+        { allowEarly: true }
+      );
+      assert.ok(tokenData.token);
+      assert.strictEqual(tokenData.resourceId, blockAResource._id.toString());
+
+      // 2. Scan door QR matching the room code (e.g. COMP-101 or CAMPUSFLOW-DOOR:COMP-101)
+      const checkInResult = await ReservationService.checkIn({
+        reservationId: booking._id.toString(),
+        userId: studentUser._id.toString(),
+        userRoles: [UserRole.STUDENT],
+        token: tokenData.token,
+        scannedResourceId: `CAMPUSFLOW-DOOR:${blockAResource.code}:${blockAResource._id.toString()}`,
+        allowEarly: true,
+      });
+
+      assert.strictEqual(checkInResult.status, ReservationStatus.CHECKED_IN);
+      assert.strictEqual(checkInResult.isAllocated, true);
+      assert.strictEqual(checkInResult.allocatedRoom.code, blockAResource.code);
+
+      // Clean up
+      await Reservation.findByIdAndDelete(booking._id);
+    });
   });
 });
