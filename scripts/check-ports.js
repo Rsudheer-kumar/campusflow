@@ -11,7 +11,7 @@ const os = require('os');
 const path = require('path');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
-const API_ENV_PATH = path.join(PROJECT_ROOT, 'backend', '.env');
+const API_ENV_PATH = path.join(PROJECT_ROOT, 'api', '.env');
 const ROOT_ENV_PATH = path.join(PROJECT_ROOT, '.env');
 const MONGODB_STARTUP_LOCK = path.join(os.tmpdir(), 'campusflow-mongodb-autostart.lock');
 
@@ -131,14 +131,32 @@ async function checkMongoTcpReachable(host, port) {
   return checkTcpConnect(host, port);
 }
 
+function ensureDependencies() {
+  const dirs = [
+    { name: 'api', path: path.join(PROJECT_ROOT, 'api') },
+    { name: 'web', path: path.join(PROJECT_ROOT, 'web') },
+  ];
+  for (const dir of dirs) {
+    const pkg = path.join(dir.path, 'package.json');
+    const nodeModules = path.join(dir.path, 'node_modules');
+    if (fs.existsSync(pkg) && !fs.existsSync(nodeModules)) {
+      console.log(`[CampusFlow Preflight] Installing missing dependencies for ${dir.name}...`);
+      try {
+        execSync(`npm install --prefix "${dir.name}"`, { stdio: 'inherit', cwd: PROJECT_ROOT });
+      } catch (err) {
+        console.warn(`[CampusFlow Preflight] Automatic npm install for ${dir.name} failed:`, err.message);
+      }
+    }
+  }
+}
+
 async function getMongoReadiness(config) {
   let MongoClient;
   const mongoPaths = [
+    path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongodb'),
     path.join(PROJECT_ROOT, 'backend', 'node_modules', 'mongodb'),
     path.join(PROJECT_ROOT, 'node_modules', 'mongodb'),
-    path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongodb'),
   ];
-
   for (const p of mongoPaths) {
     try {
       ({ MongoClient } = require(p));
@@ -154,9 +172,9 @@ async function getMongoReadiness(config) {
 
   if (!MongoClient) {
     const mongoosePaths = [
+      path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongoose'),
       path.join(PROJECT_ROOT, 'backend', 'node_modules', 'mongoose'),
       path.join(PROJECT_ROOT, 'node_modules', 'mongoose'),
-      path.join(PROJECT_ROOT, 'api', 'node_modules', 'mongoose'),
     ];
     for (const p of mongoosePaths) {
       try {
@@ -170,18 +188,9 @@ async function getMongoReadiness(config) {
   }
 
   if (!MongoClient) {
-    try {
-      const mongoose = require('mongoose');
-      if (mongoose && mongoose.mongo && mongoose.mongo.MongoClient) {
-        MongoClient = mongoose.mongo.MongoClient;
-      }
-    } catch {}
-  }
-
-  if (!MongoClient) {
     return {
       ready: false,
-      reason: 'MongoDB driver is unavailable: neither mongodb nor mongoose could be loaded from backend/node_modules',
+      reason: 'MongoDB driver is unavailable in api, backend, or root node_modules. Please run "npm install".',
     };
   }
 
@@ -307,13 +316,13 @@ async function ensureMongoReady(config) {
   if (!fs.existsSync(startup.executable)) {
     throw new Error(
       `MongoDB executable was not found: ${startup.executable}\n` +
-      `Set MONGOD_PATH in backend/.env to your local mongod.exe installation path.`
+      `Set MONGOD_PATH in api/.env to your local mongod.exe installation path.`
     );
   }
   if (!fs.existsSync(startup.config)) {
     throw new Error(
       `MongoDB configuration file was not found: ${startup.config}\n` +
-      `Set MONGODB_CONFIG_PATH in backend/.env to your local mongod.conf path.`
+      `Set MONGODB_CONFIG_PATH in api/.env to your local mongod.conf path.`
     );
   }
 
@@ -405,30 +414,8 @@ async function checkPortAvailable(port) {
   return { available: free, proc: null };
 }
 
-function ensureFrontendPublicAssets() {
-  const frontendPublic = path.join(PROJECT_ROOT, 'frontend', 'public');
-  const webPublic = path.join(PROJECT_ROOT, 'web', 'public');
-  if (fs.existsSync(webPublic)) {
-    if (!fs.existsSync(frontendPublic)) {
-      fs.cpSync(webPublic, frontendPublic, { recursive: true });
-    } else {
-      const frontendModels = path.join(frontendPublic, 'models');
-      const webModels = path.join(webPublic, 'models');
-      if (!fs.existsSync(frontendModels) && fs.existsSync(webModels)) {
-        fs.cpSync(webModels, frontendModels, { recursive: true });
-      }
-    }
-  }
-}
-
 async function main() {
-  ensureFrontendPublicAssets();
-
-  if (getEnv('SKIP_PREFLIGHT') === 'true' || process.env.SKIP_PREFLIGHT === 'true') {
-    console.log('[CampusFlow Preflight] Skipping preflight check (SKIP_PREFLIGHT is enabled).');
-    return;
-  }
-
+  ensureDependencies();
   const conflicts = [];
 
   for (const { port, name } of PORTS_TO_CHECK) {

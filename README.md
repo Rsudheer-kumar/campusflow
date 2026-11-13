@@ -30,7 +30,7 @@ CampusFlow is built with a **strictly JavaScript-first architecture** (`.js`, `.
 
 ```text
 campus-booking-platform/
-├── backend/                 # Backend Express API service
+├── api/                     # Backend Express API service
 │   ├── src/
 │   │   ├── config/          # Environment, database, and Redis lifecycle
 │   │   ├── controllers/     # Route handlers (auth, bookings, resources, approvals)
@@ -44,7 +44,7 @@ campus-booking-platform/
 │   ├── .env.example         # Backend environment template
 │   └── package.json
 │
-├── frontend/                # Frontend Next.js web application
+├── web/                     # Frontend Next.js web application
 │   ├── app/                 # Next.js App Router (pages and layouts)
 │   │   ├── dashboard/       # Authenticated pages (Calendar, Bookings, Approvals, Resources)
 │   │   ├── signin/          # Institutional authentication page
@@ -91,13 +91,13 @@ From the repository root, install dependencies across all workspace tiers:
 npm install
 
 # Install backend API dependencies
-npm --prefix backend install
+npm --prefix api install
 
 # Install frontend web dependencies
-npm --prefix frontend install
+npm --prefix web install
 ```
 
-*(For reproducible CI installs, use `npm ci`, `npm --prefix backend ci`, and `npm --prefix frontend ci`).*
+*(For reproducible CI installs, use `npm ci`, `npm --prefix api ci`, and `npm --prefix web ci`).*
 
 ---
 
@@ -111,10 +111,10 @@ CampusFlow uses separate environment templates for backend and frontend tiers:
 cp .env.example .env
 
 # Copy API environment template
-cp backend/.env.example backend/.env
+cp api/.env.example api/.env
 ```
 
-Review `backend/.env`:
+Review `api/.env`:
 - `MONGODB_URI`: Must target your local replica set, e.g. `mongodb://127.0.0.1:27018/campusflow?replicaSet=rs0&directConnection=true`.
 - `PORT`: Defaults to `5000`.
 - `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`: Set strong, unique secrets (minimum 32 characters in production).
@@ -122,7 +122,7 @@ Review `backend/.env`:
 #### B. Frontend Configuration:
 ```bash
 # Copy frontend environment template
-cp frontend/.env.example frontend/.env.local
+cp web/.env.example web/.env.local
 ```
 - `NEXT_PUBLIC_API_URL`: Set to `/api` so Next.js development rewrites forward API calls to the backend on port 5000.
 
@@ -139,7 +139,7 @@ Edit `mongod-rs0.conf` with your local data directory path. *(Note: `mongod-rs0.
 To populate the database with initial campus facilities, availability rules, and test accounts:
 
 ```bash
-npm --prefix backend run seed
+npm --prefix api run seed
 ```
 
 This creates standard institutional demo accounts:
@@ -160,13 +160,11 @@ npm run dev
 ```
 
 This executes:
-1. `predev` — Port check, MongoDB readiness check, and local demo-account repair.
-2. `dev:backend` — Starts Express on [http://localhost:5000](http://localhost:5000) with `--watch` mode.
-3. `dev:frontend` — Starts Next.js on [http://localhost:3000](http://localhost:3000).
+1. `predev` — Port check on `3000` and `5000` and MongoDB readiness check.
+2. `dev:api` — Starts Express on [http://localhost:5000](http://localhost:5000) with `--watch` mode.
+3. `dev:web` — Starts Next.js on [http://localhost:3000](http://localhost:3000).
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-In development, `predev` ensures the Student, Faculty, and Admin demo accounts exist and are active before the servers start. This step is skipped outside development mode.
 
 ---
 
@@ -177,15 +175,15 @@ CampusFlow enforces strict automated quality gates prior to integration or deplo
 | Gate | Command | Description |
 | :--- | :--- | :--- |
 | **Architecture** | `npm run check:javascript` | Verifies zero TypeScript source files (`.ts`, `.tsx`) or `tsconfig` artifacts. |
-| **Linting** | `npm run lint` | Runs ESLint across both `backend` and `frontend` codebases. |
-| **Production Build** | `npm run --prefix frontend build` | Compiles Next.js frontend with Turbopack for production. |
+| **Linting** | `npm run lint` | Runs ESLint across both `api` and `web` codebases. |
+| **Production Build** | `npm run --prefix web build` | Compiles Next.js frontend with Turbopack for production. |
 | **Unified Verification** | `npm run verify` | Sequentially runs architecture check, workspace lint, and frontend build. |
 
 ---
 
 ## ⚠️ Testing & Database Isolation Notes
 
-- **Backend Integration Tests:** `npm run --prefix backend test` executes integration tests using the native Node.js test runner (`node:test`).
+- **Backend Integration Tests:** `npm run --prefix api test` executes integration tests using the native Node.js test runner (`node:test`).
 - **Safety Restriction:** Do not run backend integration tests against the live development database on port 27017. The test suite strictly requires `MONGODB_TEST_URI` targeting a dedicated test database (`campusflow_test` on port 27018 with replica set `rs0`).
 - If an isolated replica set is not running, backend integration tests should be held unrun to prevent test record contamination.
 
