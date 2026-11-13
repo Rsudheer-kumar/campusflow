@@ -52,9 +52,9 @@ export const BUILDING_ARCHITECTURAL_PALETTES = Object.freeze({
   HEC: Object.freeze({
     code: "HEC",
     id: "bld-hopper",
-    name: "Hopper Engineering Complex",
+    name: "Block B - ECE & EEE Laboratories",
     theme: "Teal with Graphite",
-    architecturalStyle: "Multi-tier Engineering & Technical Atrium",
+    architecturalStyle: "Multi-tier ECE & EEE Engineering Complex & Laboratories",
     // 3D Three.js Material Colors
     bodyColor: "#132E35",         // Deep teal-graphite walls
     selectedBodyColor: "#1B434D", // Lifted teal upon selection
@@ -129,7 +129,7 @@ export function getBuildingArchitecturalPalette(codeOrId) {
     return BUILDING_ARCHITECTURAL_PALETTES[codeOrId];
   }
   const byId = Object.values(BUILDING_ARCHITECTURAL_PALETTES).find(
-    (p) => p.id === codeOrId
+    (p) => p.id === codeOrId || p.name === codeOrId || p.code === codeOrId
   );
   return byId || BUILDING_ARCHITECTURAL_PALETTES.TSC;
 }
@@ -156,18 +156,20 @@ export const VERIFIED_CAMPUS_BUILDINGS = [
   },
   {
     id: "bld-hopper",
-    name: "Hopper Engineering Complex",
+    name: "Block B - ECE & EEE Laboratories",
     code: "HEC",
     campus: "North Campus",
     floors: 4,
     architecturalType: "lab",
     description:
-      "Multi-disciplinary engineering center housing advanced lecture auditoriums and technical experimentation spaces.",
+      "Block B engineering complex housing Electronics & Communication (ECE) and Electrical & Electronics (EEE) design and testing laboratories.",
     // Procedural 3D scene placement (illustrative)
     position: [8, 3, -4.5],
     size: [7.5, 6, 8],
     accentColor: "#14B8A6",
     resources: [
+      { code: "ECE-201", name: "ECE & VLSI Design Lab", floor: "2", roomNumber: "201", capacity: 35, type: "ECE & EE Laboratory" },
+      { code: "EEE-202", name: "Electrical Machines & Power Systems Lab", floor: "2", roomNumber: "202", capacity: 35, type: "ECE & EE Laboratory" },
       { code: "LH-102", name: "Hopper Lecture Hall", floor: "1", roomNumber: "102", capacity: 80, type: "Lecture Hall" },
     ],
   },

@@ -511,13 +511,42 @@ export class AvailabilityService {
     const buildingRegex = new RegExp(`^${safeBuilding}$`, 'i');
 
     const effectiveLimit = Math.min(Math.max(1, limit), 50);
-    const resources = await Resource.find({
+    let resources = await Resource.find({
       'location.building': buildingRegex,
       isActive: true,
     })
       .populate('resourceType', 'name code category')
       .limit(effectiveLimit)
       .lean();
+
+    // Fallback: match by flexible building pattern or block alias
+    if (!resources || resources.length === 0) {
+      const isBlockB = /ece|eee|hopper|electrical|block\s*b/i.test(building);
+      const isBlockA = /turing|computer|block\s*a/i.test(building);
+      const isCentral = /central|auditorium/i.test(building);
+      const isInnovation = /innovation|seminar|faculty|block\s*d/i.test(building);
+
+      let fallbackPattern = null;
+      if (isBlockB) {
+        fallbackPattern = /Block\s*B|Hopper|Electrical|ECE|EEE/i;
+      } else if (isBlockA) {
+        fallbackPattern = /Block\s*A|Turing/i;
+      } else if (isCentral) {
+        fallbackPattern = /Central\s*Campus|Auditorium/i;
+      } else if (isInnovation) {
+        fallbackPattern = /Innovation|Faculty|Block\s*D/i;
+      }
+
+      if (fallbackPattern) {
+        resources = await Resource.find({
+          'location.building': fallbackPattern,
+          isActive: true,
+        })
+          .populate('resourceType', 'name code category')
+          .limit(effectiveLimit)
+          .lean();
+      }
+    }
 
     if (!resources || resources.length === 0) {
       return null;
