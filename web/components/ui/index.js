@@ -10,3 +10,5 @@ export { Tabs, TabPanel } from "./tabs";
 export { Skeleton, SkeletonText, SkeletonAvatar, SkeletonButton, SkeletonCard } from "./skeleton";
 export { EmptyState } from "./empty-state";
 export { ErrorState } from "./error-state";
+export { Text3DFlip } from "./text-3d-flip";
+export { ShinyButton } from "./shiny-button";
