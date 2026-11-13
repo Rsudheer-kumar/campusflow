@@ -34,6 +34,12 @@ const PREDEFINED_PUBLIC_HOLIDAYS = [
   { name: 'Diwali (Deepavali)', date: '2026-11-08', category: HolidayCategory.NATIONAL },
   { name: 'Guru Nanak Jayanti', date: '2026-11-24', category: HolidayCategory.NATIONAL },
   { name: 'Christmas Day', date: '2026-12-25', category: HolidayCategory.NATIONAL },
+  { name: 'Winter Break & Year-End Campus Closure', date: '2026-12-26', category: HolidayCategory.INSTITUTIONAL },
+  { name: 'Winter Break & Year-End Campus Closure', date: '2026-12-27', category: HolidayCategory.INSTITUTIONAL },
+  { name: 'Winter Break & Year-End Campus Closure', date: '2026-12-28', category: HolidayCategory.INSTITUTIONAL },
+  { name: 'Winter Break & Year-End Campus Closure', date: '2026-12-29', category: HolidayCategory.INSTITUTIONAL },
+  { name: 'Winter Break & Year-End Campus Closure', date: '2026-12-30', category: HolidayCategory.INSTITUTIONAL },
+  { name: 'New Year Eve (Campus Closure)', date: '2026-12-31', category: HolidayCategory.INSTITUTIONAL },
   // Institution Specific Annual Observances
   { name: 'University Annual Convocation Day', date: '2026-02-28', category: HolidayCategory.INSTITUTIONAL },
   { name: 'Campus Founders & Innovation Day', date: '2026-09-15', category: HolidayCategory.INSTITUTIONAL },

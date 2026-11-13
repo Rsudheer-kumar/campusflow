@@ -53,9 +53,24 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
 
     const holidayOnDate = useMemo(() => {
         if (!date) return null;
-        const found = holidaysList.find(h => h.date === date);
+        if (date >= "2026-12-25" && date <= "2026-12-31") {
+            return {
+                name: date === "2026-12-25" ? "Christmas Day" : date === "2026-12-31" ? "New Year's Eve (Campus Closure)" : "Winter Break & Year-End Closure",
+                date,
+                reason: "Official Institutional Campus Holiday: Winter Break & Year-End Closure",
+            };
+        }
+        const found = holidaysList.find(h => {
+            if (h.date === date) return true;
+            if (h.startDate && h.endDate && date >= h.startDate && date <= h.endDate) return true;
+            if (h.startAt && h.endAt) {
+                const sIso = new Date(h.startAt).toISOString().slice(0, 10);
+                const eIso = new Date(h.endAt).toISOString().slice(0, 10);
+                return date >= sIso && date <= eIso;
+            }
+            return false;
+        });
         if (found) return found;
-        if (date === "2026-12-25") return { name: "Christmas Day", date: "2026-12-25", reason: "Official Public Holiday: Christmas Day" };
         if (date === "2026-10-02") return { name: "Mahatma Gandhi Jayanti", date: "2026-10-02", reason: "Official Public Holiday: Mahatma Gandhi Jayanti" };
         if (date === "2026-11-08") return { name: "Diwali (Deepavali)", date: "2026-11-08", reason: "Official Public Holiday: Diwali" };
         return null;

@@ -1,15 +1,17 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LogOut, Globe, UserCheck, Shield, GraduationCap } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { LogOut, Globe, User, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 export function UserMenu() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
-  const { user, logout, switchRole, isLoading } = useAuth();
+  const { user, logout, isLoading } = useAuth();
 
   // Close on click outside (unconditionally at top level)
   useEffect(() => {
@@ -91,65 +93,18 @@ export function UserMenu() {
             </span>
           </div>
 
-          {/* Role Switcher for seamless evaluation */}
-          <div className="px-3 py-2 border-b border-border/50">
-            <p className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-1.5">
-              Switch Demo Identity
-            </p>
-            <div className="grid grid-cols-3 gap-1">
-              <button
-                type="button"
-                onClick={() => {
-                  switchRole("STUDENT");
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  "flex flex-col items-center justify-center p-1.5 rounded text-xs transition-colors",
-                  primaryRole === "STUDENT"
-                    ? "bg-primary/20 text-primary-bright border border-primary/40"
-                    : "text-muted hover:bg-white/[0.04] hover:text-foreground"
-                )}
-              >
-                <GraduationCap className="h-3.5 w-3.5 mb-0.5" />
-                <span className="text-[10px]">Student</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  switchRole("FACULTY");
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  "flex flex-col items-center justify-center p-1.5 rounded text-xs transition-colors",
-                  primaryRole === "FACULTY"
-                    ? "bg-primary/20 text-primary-bright border border-primary/40"
-                    : "text-muted hover:bg-white/[0.04] hover:text-foreground"
-                )}
-              >
-                <UserCheck className="h-3.5 w-3.5 mb-0.5" />
-                <span className="text-[10px]">Faculty</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  switchRole("ADMIN");
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  "flex flex-col items-center justify-center p-1.5 rounded text-xs transition-colors",
-                  primaryRole === "ADMIN"
-                    ? "bg-primary/20 text-primary-bright border border-primary/40"
-                    : "text-muted hover:bg-white/[0.04] hover:text-foreground"
-                )}
-              >
-                <Shield className="h-3.5 w-3.5 mb-0.5" />
-                <span className="text-[10px]">Admin</span>
-              </button>
-            </div>
-          </div>
-
           {/* Menu Items */}
           <div className="p-1 space-y-0.5">
+            <Link
+              href="/dashboard/settings"
+              prefetch={true}
+              onClick={() => setIsOpen(false)}
+              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-sm text-muted outline-none transition-colors hover:bg-white/[0.04] hover:text-foreground focus:bg-white/[0.04] focus:text-foreground"
+              role="menuitem"
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+              Settings & Profile
+            </Link>
             <Link
               href="/"
               prefetch={true}
@@ -167,7 +122,7 @@ export function UserMenu() {
               onClick={async () => {
                 setIsOpen(false);
                 await logout();
-                window.location.href = "/dashboard";
+                router.push("/dashboard");
               }}
               className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-sm text-danger outline-none transition-colors hover:bg-danger/10 focus:bg-danger/10"
               role="menuitem"

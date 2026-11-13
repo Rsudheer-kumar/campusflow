@@ -8,9 +8,14 @@ import { BookingModal } from "@/components/calendar/booking-modal";
 import { TimetableDetailModal } from "@/components/calendar/timetable-detail-modal";
 import { BookingDetailModal } from "@/components/calendar/booking-detail-modal";
 import { CheckInModal } from "@/components/bookings/check-in-modal";
+import { HolidayNoticeModal } from "@/components/calendar/holiday-notice-modal";
+import { DeclareHolidayModal } from "@/components/calendar/declare-holiday-modal";
 import { api, } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { cn, resolveReservationTimezone, localToUtc, utcToLocalParts } from "@/lib/utils";
 function CalendarView() {
+    const { user } = useAuth();
+    const isAdmin = user?.roles?.includes("ADMIN") || user?.role === "ADMIN";
     const searchParams = useSearchParams();
     const router = useRouter();
     // Selected state
@@ -31,6 +36,8 @@ function CalendarView() {
     const [selectedBlock, setSelectedBlock] = useState("ALL");
     const [selectedCategory, setSelectedCategory] = useState("ALL");
     const [holidays, setHolidays] = useState([]);
+    const [noticeHoliday, setNoticeHoliday] = useState(null);
+    const [isDeclareHolidayOpen, setIsDeclareHolidayOpen] = useState(false);
 
     // Data state
     const [timetables, setTimetables] = useState([]);
@@ -434,12 +441,21 @@ function CalendarView() {
     return (<div className="min-h-full py-8 grid-background">
       <PageContainer className="space-y-6">
         {/* Header with Title and Action Button */}
-        <PageHeader title="Campus Timetable & Availability" description="Institutional curriculum sessions, academic timetables, and resource reservations." action={<Button size="sm" icon={<Plus className="h-4 w-4"/>} onClick={() => {
+        <PageHeader title="Campus Timetable & Availability" description="Institutional curriculum sessions, academic timetables, and resource reservations." action={
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button size="sm" variant="outline" icon={<CalendarCheck className="h-4 w-4 text-amber-400"/>} onClick={() => setIsDeclareHolidayOpen(true)}>
+                Declare Holiday
+              </Button>
+            )}
+            <Button size="sm" icon={<Plus className="h-4 w-4"/>} onClick={() => {
                 setModalSlot(null);
                 setIsModalOpen(true);
             }} disabled={!activeResource}>
               New Booking
-            </Button>}/>
+            </Button>
+          </div>
+        }/>
 
         {/* Four-Block Campus Navigation Pills (Feature 2) */}
         <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
@@ -683,13 +699,25 @@ const timeLabel = `${String(hour).padStart(2, "0")}:00`; // hour is already in f
                         const matchingTt = timetables.find((tt) => new Date(tt.startAt) < slotEndUtc && new Date(tt.endAt) > slotStartUtc) ?? null;
                         const matchingBk = bookings.find((bk) => new Date(bk.startAt) < slotEndUtc && new Date(bk.endAt) > slotStartUtc) ?? null;
                         const matchingHoliday = holidays.find((h) => {
-                            return h.date === dayDateStr || (h.startAt && new Date(h.startAt) < slotEndUtc && new Date(h.endAt) > slotStartUtc);
-                        }) || (dayDateStr === "2026-12-25" ? { name: "Christmas Day", date: "2026-12-25", reason: "Official Public Holiday: Christmas Day" } : dayDateStr === "2026-10-02" ? { name: "Mahatma Gandhi Jayanti", date: "2026-10-02", reason: "Official Public Holiday" } : dayDateStr === "2026-11-08" ? { name: "Diwali", date: "2026-11-08", reason: "Official Public Holiday" } : null);
+                            if (h.date === dayDateStr) return true;
+                            if (h.startDate && h.endDate && dayDateStr >= h.startDate && dayDateStr <= h.endDate) return true;
+                            if (h.startAt && h.endAt) {
+                                const sIso = new Date(h.startAt).toISOString().slice(0, 10);
+                                const eIso = new Date(h.endAt).toISOString().slice(0, 10);
+                                return dayDateStr >= sIso && dayDateStr <= eIso;
+                            }
+                            return false;
+                        }) || (dayDateStr >= "2026-12-25" && dayDateStr <= "2026-12-31" ? {
+                            name: dayDateStr === "2026-12-25" ? "Christmas Day" : dayDateStr === "2026-12-31" ? "New Year's Eve (Campus Closure)" : "Winter Break & Year-End Closure",
+                            date: dayDateStr,
+                            reason: "Official Institutional Campus Holiday: Winter Break & Year-End Closure",
+                            scope: "CAMPUS_WIDE",
+                        } : dayDateStr === "2026-10-02" ? { name: "Mahatma Gandhi Jayanti", date: "2026-10-02", reason: "Official Public Holiday" } : dayDateStr === "2026-11-08" ? { name: "Diwali", date: "2026-11-08", reason: "Official Public Holiday" } : null);
                         const isMaintenanceFacility = activeResource?.status === "MAINTENANCE";
                         return (<div key={dayIdx} className={cn("border-r border-border/40 last:border-r-0 p-1 relative transition-colors select-none", isMaintenanceFacility && !matchingTt && !matchingBk
                                 ? "bg-red-950/5 cursor-pointer hover:bg-red-950/15"
                                 : matchingHoliday && !matchingTt && !matchingBk
-                                    ? "bg-amber-950/20 border-amber-500/30 cursor-not-allowed select-none"
+                                    ? "bg-amber-950/20 border-amber-500/30 cursor-pointer"
                                     : isPastCell && !matchingTt && !matchingBk
                                     ? "bg-surface-2/10 cursor-not-allowed opacity-60"
                                     : !matchingTt && !matchingBk
@@ -705,7 +733,12 @@ const timeLabel = `${String(hour).padStart(2, "0")}:00`; // hour is already in f
                                     setMaintenanceNoticeFacility(activeResource);
                                 }
                                 else if (matchingHoliday) {
-                                    alert(`Campus Closed: ${matchingHoliday.name} (${matchingHoliday.date || dayDateStr}). The university is closed on official public holidays; facility reservations are strictly disallowed.`);
+                                    setNoticeHoliday({
+                                        name: matchingHoliday.name,
+                                        date: matchingHoliday.date || dayDateStr,
+                                        reason: matchingHoliday.reason || "Official Institutional Campus Holiday",
+                                        scope: matchingHoliday.scope || "CAMPUS_WIDE",
+                                    });
                                 }
                                 else if (!isPastCell) {
                                     handleOpenBooking(dayDate, hour, Date.now());
@@ -968,6 +1001,22 @@ const timeLabel = `${String(hour).padStart(2, "0")}:00`; // hour is already in f
             </div>
           </div>
         </Modal>
+
+        {/* Official Holiday Closure Notice Modal */}
+        <HolidayNoticeModal
+          open={!!noticeHoliday}
+          onClose={() => setNoticeHoliday(null)}
+          holiday={noticeHoliday}
+        />
+
+        {/* Administrator Declare Campus Holiday Modal */}
+        <DeclareHolidayModal
+          open={isDeclareHolidayOpen}
+          onClose={() => setIsDeclareHolidayOpen(false)}
+          onSuccess={() => {
+            loadScheduleData();
+          }}
+        />
 
         {/* Booking Creation Modal */}
         <BookingModal open={isModalOpen} onClose={() => setIsModalOpen(false)} resource={activeResource} initialStartAt={modalSlot?.start} initialEndAt={modalSlot?.end} onSuccess={handleBookingSuccess}/>
