@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Bell, Menu, MonitorDot } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "./user-menu";
 export function Navbar({ onOpenMobileMenu, className, ...props }) {
-    return (<header className={cn("sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-[#050816]/80 px-4 backdrop-blur-md md:px-6", className)} {...props}>
+    return (<header className={cn("sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6", className)} {...props}>
       {/* Mobile Branding / Menu trigger */}
       <div className="flex items-center gap-3">
         <button onClick={onOpenMobileMenu} aria-label="Open mobile navigation" className={cn("flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] text-muted transition-colors outline-none md:hidden", "hover:bg-white/[0.06] hover:text-foreground active:scale-95", "focus-visible:ring-2 focus-visible:ring-primary/50")}>
@@ -23,6 +24,9 @@ export function Navbar({ onOpenMobileMenu, className, ...props }) {
 
       {/* Right side actions */}
       <div className="ml-auto flex items-center gap-2 sm:gap-4">
+        {/* Theme Toggle (Light / Dark) */}
+        <ThemeToggle />
+
         {/* Notifications (visibly non-interactive; notification service pending future milestone) */}
         <div
           className="flex h-9 w-9 items-center justify-center rounded-full text-muted/40 cursor-default select-none"

@@ -27,6 +27,7 @@ if (isProduction && (!proxySecret || proxySecret.length < 32)) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  devIndicators: false,
   transpilePackages: ["three"],
   experimental: {
     optimizePackageImports: ["three", "@react-three/drei", "lucide-react"],
