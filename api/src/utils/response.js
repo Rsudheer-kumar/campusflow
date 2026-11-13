@@ -24,11 +24,26 @@
  * @param {number} [statusCode=200] - HTTP status code (defaults to 200 OK).
  * @returns {import('express').Response} The Express response.
  */
-export function sendSuccess(res, data, statusCode = 200) {
+export function sendSuccess(res, data, statusCodeOrMessage = 200, maybeStatusCode = 200) {
+  let statusCode = 200;
+  let message;
+
+  if (typeof statusCodeOrMessage === 'number') {
+    statusCode = statusCodeOrMessage;
+  } else if (typeof statusCodeOrMessage === 'string') {
+    message = statusCodeOrMessage;
+    if (typeof maybeStatusCode === 'number') {
+      statusCode = maybeStatusCode;
+    }
+  }
+
   const body = {
     success: true,
     data,
   };
+  if (message) {
+    body.message = message;
+  }
   return res.status(statusCode).json(body);
 }
 

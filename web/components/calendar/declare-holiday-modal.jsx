@@ -14,13 +14,27 @@ export function DeclareHolidayModal({ open, onClose, onSuccess, initialStartDate
   const [startDate, setStartDate] = useState(initialStartDate || "");
   const [endDate, setEndDate] = useState(initialStartDate || "");
   const [scope, setScope] = useState("CAMPUS_WIDE");
+  const [affectedBlocks, setAffectedBlocks] = useState(["A", "B", "C", "D"]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  const toggleBlock = (blockId) => {
+    setAffectedBlocks((prev) =>
+      prev.includes(blockId)
+        ? prev.filter((b) => b !== blockId)
+        : [...prev, blockId]
+    );
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim() || !reason.trim() || !startDate) {
       setError("Please provide holiday name, reason, and start date.");
+      return;
+    }
+
+    if (scope === "SPECIFIC_BLOCKS" && affectedBlocks.length === 0) {
+      setError("Please select at least one campus block.");
       return;
     }
 
@@ -34,6 +48,7 @@ export function DeclareHolidayModal({ open, onClose, onSuccess, initialStartDate
         startDate,
         endDate: endDate || startDate,
         scope,
+        affectedBlocks: scope === "SPECIFIC_BLOCKS" ? affectedBlocks : [],
         isUniversityClosed: true,
       });
 
@@ -153,6 +168,33 @@ export function DeclareHolidayModal({ open, onClose, onSuccess, initialStartDate
               <span className="text-[10px] opacity-80">Block A, B, C or D</span>
             </button>
           </div>
+
+          {scope === "SPECIFIC_BLOCKS" && (
+            <div className="pt-2">
+              <span className="text-[11px] text-muted block mb-1.5">Choose affected blocks:</span>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { id: "A", label: "Block A" },
+                  { id: "B", label: "Block B" },
+                  { id: "C", label: "Block C" },
+                  { id: "D", label: "Block D" },
+                ].map((blk) => (
+                  <button
+                    key={blk.id}
+                    type="button"
+                    onClick={() => toggleBlock(blk.id)}
+                    className={`py-1.5 px-2 rounded border text-xs font-medium text-center transition-colors ${
+                      affectedBlocks.includes(blk.id)
+                        ? "border-primary bg-primary/20 text-primary"
+                        : "border-border bg-surface text-muted hover:text-foreground"
+                    }`}
+                  >
+                    {blk.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}

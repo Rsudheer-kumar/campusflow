@@ -17,7 +17,7 @@ export async function searchCascade(req, res, next) {
       isMeeting: isMeeting !== 'false',
       timezone,
     });
-    return sendSuccess(res, result, 'Cascade search completed across campus blocks');
+    return sendSuccess(res, result, 200);
   } catch (err) {
     return next(err);
   }
@@ -26,12 +26,7 @@ export async function searchCascade(req, res, next) {
 export async function submitEmergencyRequest(req, res, next) {
   try {
     const reservation = await EmergencyBookingService.submitEmergencyRequest(req.body, req.user);
-    return sendSuccess(
-      res,
-      reservation,
-      'Emergency room booking request successfully escalated to Campus Administration',
-      201
-    );
+    return sendSuccess(res, reservation, 201);
   } catch (err) {
     return next(err);
   }
@@ -41,11 +36,7 @@ export async function actionEmergencyRequest(req, res, next) {
   try {
     const { id } = req.params;
     const result = await EmergencyBookingService.actionEmergencyRequest(id, req.body, req.user);
-    return sendSuccess(
-      res,
-      result,
-      `Emergency booking request ${req.body.action === 'APPROVE' ? 'APPROVED' : 'REJECTED'}`
-    );
+    return sendSuccess(res, result, 200);
   } catch (err) {
     return next(err);
   }

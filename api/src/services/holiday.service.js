@@ -8,6 +8,21 @@ import { Holiday, HolidaySource, HolidayCategory, HolidayScope, HolidayStatus, R
 import { BadRequestError, NotFoundError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
+function normalizeDateInput(dStr) {
+  if (!dStr || typeof dStr !== 'string') return dStr;
+  const parts = dStr.trim().split(/[-/]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      // YYYY-MM-DD
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    } else if (parts[2].length === 4) {
+      // DD-MM-YYYY -> YYYY-MM-DD
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+  return dStr;
+}
+
 /**
  * Authoritative institutional & national public holiday template catalog.
  * Acts as the verified baseline dataset that can be loaded/synchronized offline
@@ -164,10 +179,11 @@ export class HolidayService {
       throw new BadRequestError('Start date (YYYY-MM-DD) is required');
     }
 
-    const finalEndDate = endDate || startDate;
+    const normStart = normalizeDateInput(startDate);
+    const normEnd = normalizeDateInput(endDate || startDate);
 
-    const startAt = new Date(`${startDate}T00:00:00.000Z`);
-    const endAt = new Date(`${finalEndDate}T23:59:59.999Z`);
+    const startAt = new Date(`${normStart}T00:00:00.000Z`);
+    const endAt = new Date(`${normEnd}T23:59:59.999Z`);
 
     if (isNaN(startAt.getTime()) || isNaN(endAt.getTime()) || startAt > endAt) {
       throw new BadRequestError('Invalid date range for campus holiday declaration');
@@ -178,7 +194,7 @@ export class HolidayService {
     // Create the Holiday document
     const holiday = new Holiday({
       name: name.trim(),
-      date: startDate,
+      date: normStart,
       startAt,
       endAt,
       year,
