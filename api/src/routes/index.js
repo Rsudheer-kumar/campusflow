@@ -13,6 +13,8 @@ import resourceRoutes from './resource.routes.js';
 import approvalRoutes from './approval.routes.js';
 import approvalPolicyRoutes from './approvalPolicy.routes.js';
 import analyticsRoutes from './analytics.routes.js';
+import holidayRoutes from './holiday.routes.js';
+import emergencyBookingRoutes from './emergencyBooking.routes.js';
 import {
   availabilityRuleRouter,
   blackoutRouter,
@@ -57,5 +59,11 @@ router.use('/approval-policies', approvalPolicyRoutes);
 
 // Institutional analytics endpoints: /api/analytics (Phase 3.5)
 router.use('/analytics', analyticsRoutes);
+
+// Public holiday and campus holiday declaration endpoints: /api/holidays (Feature 1)
+router.use('/holidays', holidayRoutes);
+
+// Emergency HOD four-block search and escalation endpoints: /api/emergency-bookings (Feature 2)
+router.use('/emergency-bookings', emergencyBookingRoutes);
 
 export default router;

@@ -41,6 +41,12 @@ const ResourceLocationSchema = new Schema(
       trim: true,
       maxlength: [100, 'Campus cannot exceed 100 characters'],
     },
+    block: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: 'BLOCK_A',
+    },
   },
   {
     _id: false,
@@ -106,6 +112,34 @@ export const ResourceSchema = new Schema(
     location: {
       type: ResourceLocationSchema,
       required: [true, 'Resource location is required'],
+    },
+    block: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: 'BLOCK_A',
+      index: true,
+    },
+    roomCategory: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: 'STUDENT_FACILITY',
+      index: true,
+    },
+    isMeetingEligible: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    equipment: {
+      type: [{ type: String, trim: true }],
+      default: [],
+    },
+    allowedRoles: {
+      type: [{ type: String, trim: true, uppercase: true }],
+      default: ['STUDENT', 'FACULTY', 'DEPARTMENT_HEAD', 'ADMIN'],
+      index: true,
     },
     status: {
       type: String,

@@ -311,6 +311,30 @@ export const ReservationSchema = new Schema(
       type: Schema.Types.Mixed,
       required: false,
     },
+    priority: {
+      type: String,
+      enum: ['STANDARD', 'EMERGENCY'],
+      default: 'STANDARD',
+      index: true,
+    },
+    holidayReview: {
+      requiresReview: { type: Boolean, default: false, index: true },
+      holidayId: { type: Schema.Types.ObjectId, ref: 'Holiday', default: null },
+      reason: { type: String, trim: true, default: null },
+      reviewedAt: { type: Date, default: null },
+      reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+      resolution: {
+        type: String,
+        enum: ['RETAINED', 'CANCELLED', 'RESCHEDULED', null],
+        default: null,
+      },
+    },
+    relocationAudit: {
+      displacedByReservationId: { type: Schema.Types.ObjectId, ref: 'Reservation', default: null },
+      displacedAt: { type: Date, default: null },
+      reason: { type: String, trim: true, default: null },
+      alternativeOffered: { type: String, trim: true, default: null },
+    },
   },
   {
     timestamps: true,
