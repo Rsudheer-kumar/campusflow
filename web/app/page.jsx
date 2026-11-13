@@ -25,42 +25,54 @@ const RESOURCE_FEATURES = [
     bg: "bg-cyan-400/10",
     accentColor: "#38bdf8",
     title: "Digital Twin 3D View",
+    tag: "Spatial Intelligence",
     desc: "Navigate visually. See resource availability mapped directly to specific buildings and floors in real-time.",
+    linkText: "Explore Campus Twin",
   },
   {
     icon: <Building2 className="h-6 w-6 text-violet-400" />,
     bg: "bg-violet-400/10",
     accentColor: "#a78bfa",
     title: "Facility Management",
+    tag: "Infrastructure",
     desc: "Manage everything from large lecture halls and sports complexes to individual workstations and specialized equipment.",
+    linkText: "View Facilities",
   },
   {
     icon: <Zap className="h-6 w-6 text-emerald-400" />,
     bg: "bg-emerald-400/10",
     accentColor: "#34d399",
     title: "Real-time Availability",
+    tag: "Instant Sync",
     desc: "Prevent double-bookings effortlessly. Status updates instantly across the platform as soon as a reservation is made.",
+    linkText: "Check Schedules",
   },
   {
     icon: <Calendar className="h-6 w-6 text-amber-500" />,
     bg: "bg-amber-500/10",
     accentColor: "#f59e0b",
     title: "Smart Scheduling",
+    tag: "Automated Routing",
     desc: "Automated conflict resolution and intelligent suggestions for alternative spaces tailored to your requirements.",
+    linkText: "Book Timeslots",
   },
   {
     icon: <Users className="h-6 w-6 text-cyan-400" />,
     bg: "bg-cyan-400/10",
     accentColor: "#38bdf8",
     title: "Role-based Access",
+    tag: "Governance",
     desc: "Granular permissions for students, faculty, and administrative staff ensuring resources are utilized correctly.",
+    linkText: "Manage Roles",
   },
   {
     icon: <Shield className="h-6 w-6 text-rose-400" />,
     bg: "bg-rose-400/10",
     accentColor: "#fb7185",
     title: "Enterprise Security",
+    tag: "Data Privacy",
     desc: "Built with secure cloud infrastructure and protected authentication to safeguard institutional data and privacy.",
+    linkText: "Review Security",
   },
 ];
 
@@ -130,18 +142,14 @@ export default function LandingPage() {
           <div className="absolute bottom-0 w-full h-32 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none"/>
         </section>
 
-        {/* FEATURES SECTION */}
-        <section id="features" className="py-24 relative z-20 bg-background">
-          <div className="container mx-auto px-4 md:px-6">
-            <motion.div initial="hidden" whileInView="visible" viewport={viewPortReveal} custom={1} variants={fadeUp} className="text-center mb-20 max-w-3xl mx-auto">
-              <h2 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight text-foreground">Unified platform for all resources</h2>
-              <p className="text-lg md:text-xl text-muted">
-                Replace fragmented systems with one intuitive, modern ecosystem designed to optimize space and equipment utilization.
-              </p>
-            </motion.div>
-
-            <ResourceCardsGrid items={RESOURCE_FEATURES} />
-          </div>
+        {/* FEATURES SECTION (Scroll-driven 3D Orbit Carousel) */}
+        <section id="features" className="relative z-20 bg-background overflow-visible">
+          <ResourceCardsGrid
+            meta="01 / Unified Platform"
+            title="Unified platform for all resources"
+            subtitle="Replace fragmented systems with one intuitive, modern ecosystem designed to optimize space and equipment utilization."
+            items={RESOURCE_FEATURES}
+          />
         </section>
 
         {/* HOW IT WORKS */}
