@@ -68,7 +68,7 @@ export default function BookingsPage() {
         }
     };
     // Filter bookings based on active tab with past completion calculation
-    const nowMs = Date.now();
+    const [nowMs] = useState(() => Date.now());
     const pendingBookings = useMemo(() => {
         return bookings.filter((b) => b.status === "PENDING" && new Date(b.endAt).getTime() > nowMs);
     }, [bookings, nowMs]);
@@ -150,7 +150,7 @@ export default function BookingsPage() {
                 const building = resObj?.location?.building || "University Campus";
                 const sDate = new Date(booking.startAt);
                 const eDate = new Date(booking.endAt);
-                const isPast = eDate.getTime() <= Date.now();
+                const isPast = eDate.getTime() <= nowMs;
                 const isCompleted = booking.status === "COMPLETED" || ((booking.status === "CONFIRMED" || booking.status === "CHECKED_IN") && isPast);
                 const displayStatus = booking.status === "CANCELLED" || booking.status === "REJECTED"
                     ? booking.status

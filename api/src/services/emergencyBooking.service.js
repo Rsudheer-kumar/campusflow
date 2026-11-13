@@ -12,8 +12,7 @@ import {
   UserRole,
 } from '../models/index.js';
 import { AvailabilityService } from './availability.service.js';
-import { ReservationService } from './reservation.service.js';
-import { BadRequestError, NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
+import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
 export class EmergencyBookingService {
@@ -35,7 +34,7 @@ export class EmergencyBookingService {
       requiredCapacity = 1,
       requiredEquipment = [],
       isMeeting = true,
-      timezone = 'UTC',
+      timezone: _timezone = 'UTC',
     } = params;
 
     const startAt = new Date(rawStart);

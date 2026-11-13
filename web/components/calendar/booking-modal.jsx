@@ -29,6 +29,17 @@ function getInitialValues(initialStartAt, initialEndAt, tz = "UTC") {
 }
 
 function BookingModalContent({ open, onClose, resource, initialStartAt, initialEndAt, onSuccess, }) {
+    const targetTz = resolveReservationTimezone(resource);
+    const tzLabel = targetTz ? targetTz.split("/").pop().replace(/_/g, " ") : "Local";
+    const [initial] = useState(() => getInitialValues(initialStartAt, initialEndAt, targetTz));
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [date, setDate] = useState(initial.date);
+    const [startTime, setStartTime] = useState(initial.startTime);
+    const [endTime, setEndTime] = useState(initial.endTime);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [conflictError, setConflictError] = useState(null);
+
     if (resource?.status === "MAINTENANCE") {
         return (
             <Modal open={open} onClose={onClose} title="Facility Under Maintenance" description={`Maintenance lock on ${resource.name} (${resource.code})`} size="md">
@@ -53,16 +64,6 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
             </Modal>
         );
     }
-    const targetTz = resolveReservationTimezone(resource);
-    const tzLabel = targetTz ? targetTz.split("/").pop().replace(/_/g, " ") : "Local";
-    const [initial] = useState(() => getInitialValues(initialStartAt, initialEndAt, targetTz));
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [date, setDate] = useState(initial.date);
-    const [startTime, setStartTime] = useState(initial.startTime);
-    const [endTime, setEndTime] = useState(initial.endTime);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [conflictError, setConflictError] = useState(null);
     const handleClose = () => {
         setConflictError(null);
         onClose();

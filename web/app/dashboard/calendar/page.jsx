@@ -307,7 +307,7 @@ function CalendarView() {
         loadScheduleData();
     };
     // Operating hours (08:00 to 20:00 in facility local timezone)
-    const facilityTz = useMemo(() => resolveReservationTimezone(activeResource), [activeResource]);
+    const facilityTz = resolveReservationTimezone(activeResource);
     // Local hours 08:00 – 19:00 displayed in the grid
     const hours = Array.from({ length: 12 }, (_, i) => i + 8);
 

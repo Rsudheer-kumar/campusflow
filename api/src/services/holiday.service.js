@@ -5,7 +5,7 @@
  */
 
 import { Holiday, HolidaySource, HolidayCategory, HolidayScope, HolidayStatus, Reservation, ACTIVE_RESERVATION_STATES, Resource } from '../models/index.js';
-import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors.js';
+import { BadRequestError, NotFoundError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
 /**
