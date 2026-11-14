@@ -82,6 +82,14 @@ Before setting up CampusFlow locally, ensure your environment meets the followin
 
 ## 🚀 Getting Started
 
+### Render deployment
+
+The repository includes [`render.yaml`](./render.yaml) for deploying the API and Next.js
+frontend as separate Render web services. Set the same strong `PROXY_SECRET` value on
+both services, along with the API database and JWT secrets. The frontend service must
+use the API service URL as `INTERNAL_API_URL`; this server-side proxy is required for
+authenticated student bookings.
+
 ### 1. Fresh Checkout Installation
 
 From the repository root, install dependencies across all workspace tiers:
