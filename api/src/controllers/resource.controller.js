@@ -34,9 +34,17 @@ export class ResourceController {
 
       // Restrict HOD and Faculty rooms from students
       if (isStudentOnly) {
-        query.roomCategory = { $nin: ['HOD_ROOM', 'FACULTY_ROOM'] };
-        query.code = { $not: /^(HOD|FAC)-/i };
-        query.allowedRoles = { $in: ['STUDENT'] };
+        query.$and = [
+          { roomCategory: { $nin: ['HOD_ROOM', 'FACULTY_ROOM'] } },
+          { code: { $not: /^(HOD|FAC)-/i } },
+          {
+            $or: [
+              { allowedRoles: { $exists: false } },
+              { allowedRoles: { $size: 0 } },
+              { allowedRoles: { $in: ['STUDENT'] } },
+            ],
+          },
+        ];
       }
 
       if (status) {
@@ -52,10 +60,15 @@ export class ResourceController {
       }
 
       if (search) {
-        query.$or = [
+        query.$and = [
+          ...(query.$and || []),
+          {
+            $or: [
           { name: { $regex: search, $options: 'i' } },
           { code: { $regex: search, $options: 'i' } },
           { 'location.building': { $regex: search, $options: 'i' } },
+            ],
+          },
         ];
       }
 

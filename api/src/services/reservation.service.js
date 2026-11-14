@@ -266,23 +266,22 @@ export class ReservationService {
           ? [...policyResult.approvalChain]
           : [];
 
-        // RULE: For student users booking any room, lab, or block:
-        // Bookings MUST NOT auto-approve. They require approval by Faculty and Admin.
+        // Student bookings require one approval from any eligible reviewer.
         if (isStudentBooking) {
           effectiveRequiresApproval = true;
           if (effectiveChain.length === 0) {
             effectiveChain = [
               {
                 stepOrder: 1,
-                approverRole: ApproverRole.DEPARTMENT_HEAD, // Faculty / Department Head review
-                timeoutHours: 48,
-              },
-              {
-                stepOrder: 2,
-                approverRole: ApproverRole.ADMIN, // Campus Administrator sign-off
+                approverRole: ApproverRole.DEPARTMENT_HEAD,
                 timeoutHours: 48,
               },
             ];
+          } else {
+            effectiveChain = [{
+              ...effectiveChain[0],
+              stepOrder: 1,
+            }];
           }
         }
 
@@ -466,13 +465,24 @@ export class ReservationService {
         const isFacultyStep =
           activeStep.approverRole === ApproverRole.DEPARTMENT_HEAD ||
           activeStep.approverRole === ApproverRole.FACULTY;
+        const requester = await User.findById(reservation.user).select('roles').session(session).lean();
+        const isStudentApproval = requester?.roles?.includes(UserRole.STUDENT);
+        const isEligibleStudentReviewer =
+          isStudentApproval &&
+          user.roles.some((role) => [
+            UserRole.FACULTY,
+            UserRole.DEPARTMENT_HEAD,
+            UserRole.FACILITY_MANAGER,
+            UserRole.ADMIN,
+          ].includes(role));
 
         const holdsStepRole =
+          isEligibleStudentReviewer ||
           user.roles.includes(activeStep.approverRole) ||
           (isFacultyStep && (isFaculty || isDeptHead));
 
         let isCrossDept = false;
-        if (isFacultyStep) {
+        if (isFacultyStep && !isStudentApproval) {
           const requester = await User.findById(reservation.user).select('department').session(session).lean();
           if (user.department && requester?.department && requester.department !== user.department) {
             isCrossDept = true;
@@ -510,7 +520,7 @@ export class ReservationService {
 
         // 5. Step Progression Math
         const totalSteps = reservation.approvalChain.length;
-        const isFinalStep = activeOrder === totalSteps;
+        const isFinalStep = isStudentApproval || activeOrder === totalSteps;
         const now = new Date();
 
         let nextStepOrder = null;

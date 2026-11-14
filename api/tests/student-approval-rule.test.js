@@ -27,7 +27,7 @@ describe('Student Mandatory Booking Approval Rule & Workflow', () => {
     assert.deepEqual(fallback.approvalChain, []);
   });
 
-  it('3. Student booking simulation: creates PENDING reservation with 2-step chain (Faculty -> Admin)', () => {
+  it('3. Student booking simulation: creates PENDING reservation with one approval step', () => {
     const studentUser = {
       _id: new mongoose.Types.ObjectId(),
       roles: [UserRole.STUDENT],
@@ -47,25 +47,15 @@ describe('Student Mandatory Booking Approval Rule & Workflow', () => {
       effectiveRequiresApproval = true;
       if (effectiveChain.length === 0) {
         effectiveChain = [
-          {
-            stepOrder: 1,
-            approverRole: ApproverRole.DEPARTMENT_HEAD,
-            timeoutHours: 48,
-          },
-          {
-            stepOrder: 2,
-            approverRole: ApproverRole.ADMIN,
-            timeoutHours: 48,
-          },
+          { stepOrder: 1, approverRole: ApproverRole.DEPARTMENT_HEAD, timeoutHours: 48 },
         ];
       }
     }
 
     assert.equal(isStudentBooking, true);
     assert.equal(effectiveRequiresApproval, true);
-    assert.equal(effectiveChain.length, 2);
+    assert.equal(effectiveChain.length, 1);
     assert.equal(effectiveChain[0].approverRole, ApproverRole.DEPARTMENT_HEAD);
-    assert.equal(effectiveChain[1].approverRole, ApproverRole.ADMIN);
 
     const initialStatus = effectiveRequiresApproval && effectiveChain.length > 0
       ? ReservationStatus.PENDING
