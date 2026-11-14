@@ -113,3 +113,24 @@ export function utcToLocalParts(utcDateOrIso, tz = "UTC") {
     }
 }
 
+/**
+ * Evaluates whether a given facility is restricted to Faculty/HOD and not bookable by students.
+ *
+ * @param {Object} [resource] - Target resource or facility object.
+ * @returns {boolean} True if facility is a Faculty or HOD room.
+ */
+export function isFacultyOrHodRoom(resource) {
+    if (!resource) return false;
+    const cat = resource.roomCategory || resource.category || "";
+    if (cat === "HOD_ROOM" || cat === "FACULTY_ROOM") return true;
+    const code = resource.code || "";
+    if (/^(HOD|FAC)-/i.test(code)) return true;
+    const name = resource.name || "";
+    if (/hod|faculty\s*room|faculty\s*collaborative|department\s*head/i.test(name)) return true;
+    if (Array.isArray(resource.allowedRoles) && resource.allowedRoles.length > 0 && !resource.allowedRoles.includes("STUDENT")) {
+        return true;
+    }
+    return false;
+}
+
+

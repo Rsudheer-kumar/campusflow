@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, Globe, User, Settings } from "lucide-react";
+import { LogOut, Globe, User, Settings, GraduationCap, UserCheck, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ export function UserMenu() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, switchRole, isLoading } = useAuth();
 
   // Close on click outside (unconditionally at top level)
   useEffect(() => {
@@ -79,7 +79,7 @@ export function UserMenu() {
 
       {isOpen && (
         <div
-          className="absolute right-0 top-full mt-2 w-64 rounded-[var(--radius-lg)] border border-border bg-[#0B1224] py-1.5 shadow-2xl z-50 origin-top-right focus:outline-none"
+          className="absolute right-0 top-full mt-2 w-72 rounded-[var(--radius-lg)] border border-border bg-surface py-1.5 shadow-2xl z-50 origin-top-right focus:outline-none"
           role="menu"
           aria-orientation="vertical"
           style={{ animation: "fade-in var(--transition-fast) ease-out forwards" }}
@@ -88,9 +88,66 @@ export function UserMenu() {
           <div className="border-b border-border px-4 py-2.5">
             <p className="text-sm font-medium text-foreground">{user?.name || "CampusFlow User"}</p>
             <p className="truncate text-xs text-muted">{user?.email || "student@campusflow.edu"}</p>
-            <span className="mt-1.5 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary-bright uppercase tracking-wider">
+            <span className="mt-1.5 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary uppercase tracking-wider">
               {primaryRole}
             </span>
+          </div>
+
+          {/* Switch Demo Identity */}
+          <div className="border-b border-border p-2">
+            <p className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-1.5 px-1">
+              Switch Demo Identity
+            </p>
+            <div className="grid grid-cols-3 gap-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  await switchRole("STUDENT");
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2 rounded-lg text-xs transition-colors",
+                  primaryRole === "STUDENT"
+                    ? "bg-primary/20 text-foreground border border-primary/40 font-semibold"
+                    : "text-muted hover:bg-surface-2 hover:text-foreground"
+                )}
+              >
+                <GraduationCap className="h-4 w-4 mb-1" />
+                <span className="text-[11px]">Student</span>
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await switchRole("FACULTY");
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2 rounded-lg text-xs transition-colors",
+                  primaryRole === "FACULTY"
+                    ? "bg-primary/20 text-foreground border border-primary/40 font-semibold"
+                    : "text-muted hover:bg-surface-2 hover:text-foreground"
+                )}
+              >
+                <UserCheck className="h-4 w-4 mb-1" />
+                <span className="text-[11px]">Faculty</span>
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await switchRole("ADMIN");
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2 rounded-lg text-xs transition-colors",
+                  primaryRole === "ADMIN" || primaryRole === "FACILITY_MANAGER"
+                    ? "bg-primary/20 text-foreground border border-primary/40 font-semibold"
+                    : "text-muted hover:bg-surface-2 hover:text-foreground"
+                )}
+              >
+                <Shield className="h-4 w-4 mb-1" />
+                <span className="text-[11px]">Admin</span>
+              </button>
+            </div>
           </div>
 
           {/* Menu Items */}

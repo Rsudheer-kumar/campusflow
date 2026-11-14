@@ -67,7 +67,7 @@ export function CampusScene({
   return (
     <div ref={containerRef} className="w-full h-full relative group">
       {/* Desktop Interaction Hint */}
-      <div className="absolute bottom-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none hidden sm:flex items-center gap-2 bg-[#0B1224]/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#1E2A44] text-[#94A3B8] text-[11px] font-medium tracking-wide shadow-lg">
+      <div className="absolute bottom-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none hidden sm:flex items-center gap-2 bg-surface/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-border text-muted text-[11px] font-medium tracking-wide shadow-xs">
         Drag to orbit &bull; Ctrl + scroll to zoom
       </div>
 
@@ -80,7 +80,7 @@ export function CampusScene({
           style={{
             width: "100%",
             height: "100%",
-            background: "#101827",
+            background: "#000000",
           }}
         >
           <Suspense fallback={null}>

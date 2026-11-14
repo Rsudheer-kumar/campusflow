@@ -13,6 +13,8 @@
 
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
   --color-border: var(--border);
 
   --color-primary: var(--primary);
@@ -24,6 +26,7 @@
   --color-danger: var(--danger);
 
   --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted);
 }
 
 /* ─────────────────────────────────────────────
@@ -62,44 +65,44 @@
 
 /* ─────────────────────────────────────────────
    DARK MODE
-   Midnight Blue + Steel Blue
+   Pure Pitch Black + Elevated Slate & Crisp Borders
    ───────────────────────────────────────────── */
 .dark,
 [data-theme="dark"] {
-  --background: #111C2B;
-  --foreground: #F0F5FA;
+  --background: #000000;
+  --foreground: #F3F4F6;
 
-  --surface: #192A3D;
-  --surface-2: #233B52;
-  --border: #385774;
+  --surface: #111215;
+  --surface-2: #1B1D22;
+  --border: #282C35;
 
   --primary: #829BB5;
-  --primary-bright: #A1B8D0;
+  --primary-bright: #9EB6D0;
 
   --success: #32D583;
   --warning: #FDB022;
   --danger: #F97066;
 
-  --muted: #B3C3D4;
+  --muted: #9CA3AF;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not([data-theme="light"]) {
-    --background: #111C2B;
-    --foreground: #F0F5FA;
+    --background: #000000;
+    --foreground: #F3F4F6;
 
-    --surface: #192A3D;
-    --surface-2: #233B52;
-    --border: #385774;
+    --surface: #111215;
+    --surface-2: #1B1D22;
+    --border: #282C35;
 
     --primary: #829BB5;
-    --primary-bright: #A1B8D0;
+    --primary-bright: #9EB6D0;
 
     --success: #32D583;
     --warning: #FDB022;
     --danger: #F97066;
 
-    --muted: #B3C3D4;
+    --muted: #9CA3AF;
   }
 }
 

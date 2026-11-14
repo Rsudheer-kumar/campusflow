@@ -31,11 +31,17 @@ import { HolidayNoticeModal } from "@/components/calendar/holiday-notice-modal";
 import { DeclareHolidayModal } from "@/components/calendar/declare-holiday-modal";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { cn, resolveReservationTimezone, localToUtc } from "@/lib/utils";
+import { cn, resolveReservationTimezone, localToUtc, isFacultyOrHodRoom } from "@/lib/utils";
 
 function CalendarView() {
   const { user } = useAuth();
   const isAdmin = user?.roles?.includes("ADMIN") || user?.role === "ADMIN";
+  const isStudent = Boolean(
+    user?.roles?.includes("STUDENT") &&
+      !user?.roles?.some((r) =>
+        ["FACULTY", "ADMIN", "DEPARTMENT_HEAD", "FACILITY_MANAGER"].includes(r)
+      )
+  );
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -185,10 +191,25 @@ function CalendarView() {
     router.replace(`/dashboard/calendar?${params.toString()}`);
   };
 
+  // Filter resources based on role (hide Faculty and HOD rooms from students)
+  const allowedResources = useMemo(() => {
+    if (!isStudent) return resources;
+    return resources.filter((r) => !isFacultyOrHodRoom(r));
+  }, [resources, isStudent]);
+
   // Find currently active resource object
   const activeResource = useMemo(() => {
-    return resources.find((r) => r._id === selectedResourceId) || null;
-  }, [resources, selectedResourceId]);
+    return allowedResources.find((r) => r._id === selectedResourceId) || null;
+  }, [allowedResources, selectedResourceId]);
+
+  useEffect(() => {
+    if (allowedResources.length > 0) {
+      const isSelectedAllowed = allowedResources.some((r) => r._id === selectedResourceId);
+      if (!isSelectedAllowed) {
+        setSelectedResourceId(allowedResources[0]._id);
+      }
+    }
+  }, [allowedResources, selectedResourceId]);
 
   // Operating hours (08:00 to 20:00 in facility local timezone)
   const facilityTz = resolveReservationTimezone(activeResource);
@@ -421,7 +442,7 @@ function CalendarView() {
   }, [selectedDate]);
 
   const filteredResources = useMemo(() => {
-    return resources.filter((r) => {
+    return allowedResources.filter((r) => {
       const matchBlock =
         selectedBlock === "ALL" ||
         r.block === selectedBlock ||
@@ -429,7 +450,7 @@ function CalendarView() {
       const matchCategory = selectedCategory === "ALL" || r.roomCategory === selectedCategory;
       return matchBlock && matchCategory;
     });
-  }, [resources, selectedBlock, selectedCategory]);
+  }, [allowedResources, selectedBlock, selectedCategory]);
 
   // Current timestamp snapshot
   const now = new Date();

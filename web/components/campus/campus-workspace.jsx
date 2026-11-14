@@ -23,6 +23,8 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { isFacultyOrHodRoom } from "@/lib/utils";
 import {
   VERIFIED_CAMPUS_BUILDINGS,
   CAMPUS_GEOMETRY_DISCLAIMER,
@@ -47,6 +49,13 @@ export function CampusWorkspace({
   refreshKey = 0,
   className = "",
 }) {
+  const { user } = useAuth();
+  const isStudent = Boolean(
+    user?.roles?.includes("STUDENT") &&
+      !user?.roles?.some((r) =>
+        ["FACULTY", "ADMIN", "DEPARTMENT_HEAD", "FACILITY_MANAGER"].includes(r)
+      )
+  );
   const [selectedBuildingId, setSelectedBuildingId] = useState("bld-turing");
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(new Date()));
   const [startTime, setStartTime] = useState(() => {
@@ -215,40 +224,89 @@ export function CampusWorkspace({
     return availabilityMap[activeBuilding.name] || null;
   }, [activeBuilding, availabilityMap]);
 
+  // Student-visible resources for currently active building (hides HOD & Faculty rooms from students)
+  const studentVisibleResources = useMemo(() => {
+    if (!activeBuildingAvail?.resources) return [];
+    if (!isStudent) return activeBuildingAvail.resources;
+    return activeBuildingAvail.resources.filter((r) => !isFacultyOrHodRoom(r));
+  }, [activeBuildingAvail, isStudent]);
+
   // Distinct floors available in the inspected building
   const buildingFloors = useMemo(() => {
-    if (!activeBuildingAvail?.resources) return [];
-    const floors = new Set(activeBuildingAvail.resources.map((r) => r.floor || "1"));
+    if (!studentVisibleResources.length) return [];
+    const floors = new Set(studentVisibleResources.map((r) => r.floor || "1"));
     return Array.from(floors).sort();
-  }, [activeBuildingAvail]);
+  }, [studentVisibleResources]);
 
   // Filtered facilities based on floor tab
   const filteredFacilities = useMemo(() => {
-    if (!activeBuildingAvail?.resources) return [];
-    if (selectedFloor === "ALL") return activeBuildingAvail.resources;
-    return activeBuildingAvail.resources.filter((r) => (r.floor || "1") === selectedFloor);
-  }, [activeBuildingAvail, selectedFloor]);
+    if (!studentVisibleResources.length) return [];
+    if (selectedFloor === "ALL") return studentVisibleResources;
+    return studentVisibleResources.filter((r) => (r.floor || "1") === selectedFloor);
+  }, [studentVisibleResources, selectedFloor]);
+
+  // Evaluated status counts for active building (filtered for student if applicable)
+  const displayCounts = useMemo(() => {
+    if (!activeBuildingAvail?.resources) {
+      return { available: 0, occupied: 0, maintenance: 0, unknown: 0 };
+    }
+    if (!isStudent) {
+      return activeBuildingAvail.summary?.counts || { available: 0, occupied: 0, maintenance: 0, unknown: 0 };
+    }
+    return {
+      available: studentVisibleResources.filter((r) => r.availability?.available).length,
+      occupied: studentVisibleResources.filter((r) => r.availability?.visualStatus === "occupied").length,
+      maintenance: studentVisibleResources.filter((r) => r.availability?.visualStatus === "maintenance").length,
+      unknown: studentVisibleResources.filter((r) => !r.availability?.visualStatus || r.availability?.visualStatus === "unknown").length,
+    };
+  }, [activeBuildingAvail, isStudent, studentVisibleResources]);
+
+  // 3D Scene availability map: adjust Block D counts for student view so pins show student-accessible facilities
+  const sceneAvailabilityMap = useMemo(() => {
+    if (!isStudent) return availabilityMap;
+    const adjusted = { ...availabilityMap };
+    for (const b of VERIFIED_CAMPUS_BUILDINGS) {
+      if (b.block === "BLOCK_D" && adjusted[b.name]) {
+        const avail = adjusted[b.name];
+        const visibleRes = (avail.resources || []).filter((r) => !isFacultyOrHodRoom(r));
+        const availCount = visibleRes.filter((r) => r.availability?.available).length;
+        adjusted[b.name] = {
+          ...avail,
+          summary: {
+            ...avail.summary,
+            counts: {
+              ...avail.summary?.counts,
+              available: availCount,
+            },
+            total: visibleRes.length,
+            displayBadge: `${availCount} Available`,
+          },
+        };
+      }
+    }
+    return adjusted;
+  }, [availabilityMap, isStudent]);
 
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
       {/* ─── Workspace Header Controls ─── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-card/80 backdrop-blur-md border border-border/80 shadow-sm">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-surface border border-border shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 shrink-0">
+          <div className="p-2 rounded-xl bg-primary/10 border border-primary/25 text-primary shrink-0">
             <Compass className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+              <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight">
                 Interactive 3D Campus Map
               </h2>
               {standalone && (
-                <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[11px] font-medium text-blue-400">
+                <span className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[11px] font-medium text-primary">
                   Full View
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted mt-0.5">
               Click any building model or tab below to inspect live room availability and book slots.
             </p>
           </div>
@@ -257,43 +315,43 @@ export function CampusWorkspace({
         {/* Time Window Controls & Mode Switcher */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Date Picker */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-background/80 border border-border/70 text-xs">
-            <Calendar className="h-3.5 w-3.5 text-blue-400" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-2 border border-border text-xs text-foreground">
+            <Calendar className="h-3.5 w-3.5 text-primary" />
             <input
               type="date"
               aria-label="Reservation Date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-transparent text-white text-xs outline-none cursor-pointer"
+              className="bg-transparent text-foreground text-xs outline-none cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
             />
           </div>
 
           {/* Time Picker */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-background/80 border border-border/70 text-xs">
-            <Clock className="h-3.5 w-3.5 text-amber-400" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-2 border border-border text-xs text-foreground">
+            <Clock className="h-3.5 w-3.5 text-warning" />
             <input
               type="time"
               aria-label="Start Time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="bg-transparent text-white text-xs outline-none cursor-pointer"
+              className="bg-transparent text-foreground text-xs outline-none cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
             />
           </div>
 
           {/* Duration Selector */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-background/80 border border-border/70 text-xs text-muted-foreground">
-            <SlidersHorizontal className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-2 border border-border text-xs text-muted">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-muted" />
             <select
               aria-label="Booking Duration"
               value={durationMinutes}
               onChange={(e) => setDurationMinutes(Number(e.target.value))}
-              className="bg-transparent text-white outline-none cursor-pointer text-xs"
+              className="bg-transparent text-foreground outline-none cursor-pointer text-xs"
             >
-              <option value={30} className="bg-slate-900">30m</option>
-              <option value={60} className="bg-slate-900">1 hour</option>
-              <option value={120} className="bg-slate-900">2 hours</option>
-              <option value={180} className="bg-slate-900">3 hours</option>
-              <option value={240} className="bg-slate-900">4 hours</option>
+              <option value={30} className="bg-surface text-foreground">30m</option>
+              <option value={60} className="bg-surface text-foreground">1 hour</option>
+              <option value={120} className="bg-surface text-foreground">2 hours</option>
+              <option value={180} className="bg-surface text-foreground">3 hours</option>
+              <option value={240} className="bg-surface text-foreground">4 hours</option>
             </select>
           </div>
 
@@ -303,21 +361,21 @@ export function CampusWorkspace({
             onClick={fetchAvailability}
             disabled={loading}
             aria-label="Refresh availability data"
-            className="p-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 transition-colors disabled:opacity-50"
             title="Recalculate availability"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </button>
 
           {/* Mode Switcher: 3D Twin vs 2D Grid */}
-          <div className="flex items-center bg-slate-900/80 p-0.5 rounded-xl border border-border/60">
+          <div className="flex items-center bg-surface-2 p-0.5 rounded-xl border border-border">
             <button
               type="button"
               onClick={() => setViewMode("3d")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 viewMode === "3d"
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-muted hover:text-foreground"
               }`}
             >
               <Compass className="h-3.5 w-3.5" />
@@ -328,8 +386,8 @@ export function CampusWorkspace({
               onClick={() => setViewMode("2d")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 viewMode === "2d"
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-muted hover:text-foreground"
               }`}
             >
               <TableProperties className="h-3.5 w-3.5" />
@@ -339,10 +397,8 @@ export function CampusWorkspace({
         </div>
       </div>
 
-
-
       {error && (
-        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-danger/10 border border-danger/20 text-danger text-xs">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -352,23 +408,23 @@ export function CampusWorkspace({
       {viewMode === "3d" ? (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 min-h-[560px]">
           {/* Left/Center 3D Campus Canvas Viewport */}
-          <div className="xl:col-span-8 min-h-[460px] xl:min-h-[580px] rounded-2xl overflow-hidden border border-border/80 shadow-2xl relative bg-[#050816]">
+          <div className="xl:col-span-8 min-h-[460px] xl:min-h-[580px] rounded-2xl overflow-hidden border border-border shadow-md relative bg-black">
             <CampusScene
               selectedBuildingId={selectedBuildingId}
               onSelectBuilding={(id) => {
                 setSelectedBuildingId(id);
                 setSelectedFloor("ALL");
               }}
-              buildingAvailabilityMap={availabilityMap}
+              buildingAvailabilityMap={sceneAvailabilityMap}
             />
 
             {/* Quick Campus Zone Overlay Pills */}
             <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2 pointer-events-none">
-              <span className="px-3 py-1 rounded-full bg-slate-900/85 backdrop-blur-md border border-slate-700/60 text-[11px] font-semibold text-blue-400 uppercase tracking-wider shadow-sm">
+              <span className="px-3 py-1 rounded-full bg-surface/90 backdrop-blur-md border border-border text-[11px] font-semibold text-primary uppercase tracking-wider shadow-xs">
                 North Campus &bull; Central Campus
               </span>
               {loading && (
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-900/85 backdrop-blur-md border border-blue-500/40 text-[11px] font-medium text-blue-200 shadow-sm">
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface/90 backdrop-blur-md border border-primary/40 text-[11px] font-medium text-primary shadow-xs">
                   <RefreshCw className="h-3 w-3 animate-spin" />
                   Calculating availability...
                 </span>
@@ -376,38 +432,38 @@ export function CampusWorkspace({
             </div>
 
             {/* Selected Time Interval Badge */}
-            <div className="absolute bottom-4 left-4 z-10 bg-slate-950/85 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-slate-800 text-xs text-slate-300 pointer-events-none hidden sm:block shadow-md">
-              Evaluated Window: <span className="font-semibold text-white">{queryInterval.startLocalStr} – {queryInterval.endLocalStr}</span>
+            <div className="absolute bottom-4 left-4 z-10 bg-surface/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-border text-xs text-muted pointer-events-none hidden sm:block shadow-xs">
+              Evaluated Window: <span className="font-semibold text-foreground">{queryInterval.startLocalStr} – {queryInterval.endLocalStr}</span>
             </div>
           </div>
 
           {/* Right Building Inspector Drawer */}
           <div className="xl:col-span-4 flex flex-col gap-4">
             {activeBuilding ? (
-              <div className={`rounded-2xl border ${activePalette?.borderClass || "border-border/80"} bg-card/95 backdrop-blur-md p-4 sm:p-5 flex flex-col gap-4 shadow-xl h-full max-h-[620px] overflow-y-auto`}>
+              <div className={`rounded-2xl border ${activePalette?.borderClass || "border-border"} bg-surface p-4 sm:p-5 flex flex-col gap-4 shadow-sm h-full max-h-[620px] overflow-y-auto`}>
                 {/* Building Header */}
                 <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-3.5">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-md text-xs font-mono font-semibold ${activePalette?.badgeClass || "bg-blue-500/10 text-blue-400"}`}>
+                      <span className={`px-2 py-0.5 rounded-md text-xs font-mono font-semibold ${activePalette?.badgeClass || "bg-primary/10 text-primary border border-primary/25"}`}>
                         {activeBuilding.code}
                       </span>
-                      <span className="text-xs text-muted-foreground">{activeBuilding.campus}</span>
+                      <span className="text-xs text-muted">{activeBuilding.campus}</span>
                       {activePalette?.theme && (
-                        <span className="text-[11px] text-slate-400 border-l border-slate-750 pl-2">
+                        <span className="text-[11px] text-muted border-l border-border pl-2">
                           {activePalette.theme}
                         </span>
                       )}
                     </div>
-                    <h3 className="text-lg font-bold text-white mt-1">
+                    <h3 className="text-lg font-bold text-foreground mt-1">
                       {activeBuilding.name}
                     </h3>
                     {activePalette?.architecturalStyle && (
-                      <p className="text-xs text-slate-400 italic mt-0.5">
+                      <p className="text-xs text-muted italic mt-0.5">
                         {activePalette.architecturalStyle}
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    <p className="text-xs text-muted mt-1 line-clamp-2">
                       {activeBuilding.description}
                     </p>
                   </div>
@@ -416,35 +472,35 @@ export function CampusWorkspace({
                 {/* Independent Facility Status Breakdown */}
                 {activeBuildingAvail?.summary?.counts && (
                   <div className="grid grid-cols-4 gap-2 text-center">
-                    <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                      <div className="text-base font-bold text-blue-400">
-                        {activeBuildingAvail.summary.counts.available}
+                    <div className="p-2 rounded-xl bg-primary/10 border border-primary/20">
+                      <div className="text-base font-bold text-primary">
+                        {displayCounts.available}
                       </div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">
+                      <div className="text-[10px] uppercase tracking-wider text-muted mt-0.5 font-medium">
                         Available
                       </div>
                     </div>
-                    <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                      <div className="text-base font-bold text-amber-400">
-                        {activeBuildingAvail.summary.counts.occupied}
+                    <div className="p-2 rounded-xl bg-warning/10 border border-warning/20">
+                      <div className="text-base font-bold text-warning">
+                        {displayCounts.occupied}
                       </div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">
+                      <div className="text-[10px] uppercase tracking-wider text-muted mt-0.5 font-medium">
                         Occupied
                       </div>
                     </div>
-                    <div className="p-2 rounded-xl bg-red-500/10 border border-red-500/20">
-                      <div className="text-base font-bold text-red-400">
-                        {activeBuildingAvail.summary.counts.maintenance}
+                    <div className="p-2 rounded-xl bg-danger/10 border border-danger/20">
+                      <div className="text-base font-bold text-danger">
+                        {displayCounts.maintenance}
                       </div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">
+                      <div className="text-[10px] uppercase tracking-wider text-muted mt-0.5 font-medium">
                         Maint.
                       </div>
                     </div>
-                    <div className="p-2 rounded-xl bg-slate-800/60 border border-slate-700/60">
-                      <div className="text-base font-bold text-slate-300">
-                        {activeBuildingAvail.summary.counts.unknown}
+                    <div className="p-2 rounded-xl bg-surface-2 border border-border">
+                      <div className="text-base font-bold text-foreground">
+                        {displayCounts.unknown}
                       </div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">
+                      <div className="text-[10px] uppercase tracking-wider text-muted mt-0.5 font-medium">
                         Unverified
                       </div>
                     </div>
@@ -454,7 +510,7 @@ export function CampusWorkspace({
                 {/* Floor Filter Tabs */}
                 {buildingFloors.length > 1 && (
                   <div className="flex items-center gap-1.5 border-b border-border/40 pb-2 overflow-x-auto">
-                    <span className="text-[11px] text-muted-foreground mr-1 flex items-center gap-1">
+                    <span className="text-[11px] text-muted mr-1 flex items-center gap-1">
                       <Layers className="h-3 w-3" /> Floor:
                     </span>
                     <button
@@ -462,14 +518,14 @@ export function CampusWorkspace({
                       onClick={() => setSelectedFloor("ALL")}
                       className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                         selectedFloor === "ALL"
-                          ? "bg-blue-600 text-white"
-                          : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                          ? "bg-primary text-white"
+                          : "text-muted hover:text-foreground hover:bg-surface-2"
                       }`}
                     >
-                      All ({activeBuildingAvail?.resources?.length || 0})
+                      All ({studentVisibleResources.length})
                     </button>
                     {buildingFloors.map((floor) => {
-                      const count = activeBuildingAvail.resources.filter((r) => (r.floor || "1") === floor).length;
+                      const count = studentVisibleResources.filter((r) => (r.floor || "1") === floor).length;
                       return (
                         <button
                           key={floor}
@@ -477,8 +533,8 @@ export function CampusWorkspace({
                           onClick={() => setSelectedFloor(floor)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                             selectedFloor === floor
-                              ? "bg-blue-600 text-white"
-                              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                              ? "bg-primary text-white"
+                              : "text-muted hover:text-foreground hover:bg-surface-2"
                           }`}
                         >
                           Floor {floor} ({count})
@@ -500,19 +556,19 @@ export function CampusWorkspace({
                     return (
                       <div
                         key={r.code}
-                        className="p-3 rounded-xl bg-background/60 border border-border/70 hover:border-blue-500/40 transition-colors flex flex-col gap-2"
+                        className="p-3 rounded-xl bg-surface-2/60 border border-border hover:border-primary/40 transition-colors flex flex-col gap-2"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-white text-xs sm:text-sm">
+                              <span className="font-semibold text-foreground text-xs sm:text-sm">
                                 {r.name}
                               </span>
-                              <span className="font-mono text-[10px] text-slate-400 px-1.5 py-0.5 rounded bg-slate-800/80">
+                              <span className="font-mono text-[10px] text-muted px-1.5 py-0.5 rounded bg-surface border border-border">
                                 {r.code}
                               </span>
                             </div>
-                            <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1">
+                            <div className="flex items-center gap-3 text-[11px] text-muted mt-1">
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" /> Floor {r.floor || "1"} • Room {r.roomNumber || r.code}
                               </span>
@@ -533,14 +589,14 @@ export function CampusWorkspace({
 
                         {/* Booking Action Button */}
                         <div className="flex items-center justify-between pt-1 border-t border-border/40 text-xs">
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-muted">
                             {r.resourceType?.name || "Academic Facility"}
                           </span>
 
                           {isAvailable ? (
                             <Link
                               href={bookUrl}
-                              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs shadow-sm transition-colors"
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary hover:bg-primary-bright text-white font-medium text-xs shadow-xs transition-colors"
                             >
                               <span>Book Slot</span>
                               <ArrowRight className="h-3 w-3" />
@@ -548,7 +604,7 @@ export function CampusWorkspace({
                           ) : (
                             <div className="flex items-center gap-2">
                               <span
-                                className="text-[11px] text-slate-400 italic"
+                                className="text-[11px] text-muted italic"
                                 title={r.availability?.message || statusMeta.description}
                               >
                                 {r.availability?.visualStatus === "occupied"
@@ -561,7 +617,7 @@ export function CampusWorkspace({
                               </span>
                               <Link
                                 href={`/dashboard/calendar?resourceId=${r.code}&date=${encodeURIComponent(queryInterval.startAt)}`}
-                                className="text-[11px] text-blue-400 hover:text-blue-300 underline font-medium"
+                                className="text-[11px] text-primary hover:text-primary-bright underline font-medium"
                               >
                                 Schedule
                               </Link>
@@ -574,9 +630,9 @@ export function CampusWorkspace({
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border/80 bg-card/40 p-8 flex flex-col items-center justify-center text-center h-full text-muted-foreground">
-                <Compass className="h-10 w-10 text-slate-600 mb-3" />
-                <p className="text-sm font-medium text-white">Select a Building</p>
+              <div className="rounded-2xl border border-dashed border-border bg-surface/50 p-8 flex flex-col items-center justify-center text-center h-full text-muted">
+                <Compass className="h-10 w-10 text-muted mb-3" />
+                <p className="text-sm font-medium text-foreground">Select a Building</p>
                 <p className="text-xs max-w-xs mt-1">
                   Click on any 3D architectural model or marker to inspect building facilities and operational availability.
                 </p>
@@ -586,22 +642,22 @@ export function CampusWorkspace({
         </div>
       ) : (
         /* ─── 2D SCHEDULE MATRIX (ACCESSIBLE FALLBACK) ─── */
-        <div className="rounded-2xl border border-border/80 bg-card/90 overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-border/60 bg-slate-900/40 flex items-center justify-between">
+        <div className="rounded-2xl border border-border bg-surface overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-border bg-surface-2/40 flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-white text-base">Comprehensive Facility Schedule Matrix</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <h3 className="font-bold text-foreground text-base">Comprehensive Facility Schedule Matrix</h3>
+              <p className="text-xs text-muted mt-0.5">
                 Complete accessible breakdown for interval {queryInterval.startLocalStr} – {queryInterval.endLocalStr}
               </p>
             </div>
-            <span className="text-xs text-blue-400 font-mono">
-              {VERIFIED_CAMPUS_BUILDINGS.reduce((acc, b) => acc + (b.resources?.length || 0), 0)} Verified Campus Resources
+            <span className="text-xs text-primary font-mono font-medium">
+              Verified Campus Facilities
             </span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-border/60">
+            <table className="w-full text-left text-xs text-foreground">
+              <thead className="bg-surface-2 text-[11px] uppercase tracking-wider text-muted border-b border-border">
                 <tr>
                   <th className="px-4 py-3">Building</th>
                   <th className="px-4 py-3">Facility</th>
@@ -612,11 +668,11 @@ export function CampusWorkspace({
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/40">
+              <tbody className="divide-y divide-border">
                 {VERIFIED_CAMPUS_BUILDINGS.flatMap((b) => {
                   const bAvail = availabilityMap[b.name];
                   const bPalette = getBuildingArchitecturalPalette(b.code);
-                  const resources = bAvail?.resources || b.resources.map((r) => ({
+                  let resources = bAvail?.resources || b.resources.map((r) => ({
                     id: r.code,
                     code: r.code,
                     name: r.name,
@@ -624,8 +680,14 @@ export function CampusWorkspace({
                     floor: r.floor,
                     roomNumber: r.roomNumber,
                     capacity: r.capacity,
+                    roomCategory: r.roomCategory,
+                    allowedRoles: r.allowedRoles,
                     availability: { visualStatus: "unknown", available: false },
                   }));
+
+                  if (isStudent) {
+                    resources = resources.filter((r) => !isFacultyOrHodRoom(r));
+                  }
 
                   return resources.map((r) => {
                     const statusMeta = getFacilityStatusMeta(r.availability?.visualStatus);
@@ -635,17 +697,17 @@ export function CampusWorkspace({
                     )}&endAt=${encodeURIComponent(queryInterval.endAt)}`;
 
                     return (
-                      <tr key={`${b.code}-${r.code}`} className="hover:bg-slate-900/50 transition-colors">
+                      <tr key={`${b.code}-${r.code}`} className="hover:bg-surface-2/60 transition-colors">
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded text-[11px] font-mono font-semibold mr-2 ${bPalette.badgeClass}`}>
                             {b.code}
                           </span>
-                          <span className="font-medium text-white">{b.name}</span>
+                          <span className="font-medium text-foreground">{b.name}</span>
                         </td>
-                        <td className="px-4 py-3 font-medium text-white">
-                          {r.name} <span className="font-mono text-slate-400 text-[11px]">({r.code})</span>
+                        <td className="px-4 py-3 font-medium text-foreground">
+                          {r.name} <span className="font-mono text-muted text-[11px]">({r.code})</span>
                         </td>
-                        <td className="px-4 py-3 text-slate-400">{r.type || r.resourceType?.name || "Facility"}</td>
+                        <td className="px-4 py-3 text-muted">{r.type || r.resourceType?.name || "Facility"}</td>
                         <td className="px-4 py-3">Floor {r.floor || "1"} • Room {r.roomNumber || r.code}</td>
                         <td className="px-4 py-3">{r.capacity} seats</td>
                         <td className="px-4 py-3">
@@ -658,12 +720,12 @@ export function CampusWorkspace({
                           {isAvailable ? (
                             <Link
                               href={bookUrl}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-primary hover:bg-primary-bright text-white font-medium text-xs transition-colors shadow-xs"
                             >
                               Book
                             </Link>
                           ) : (
-                            <span className="text-slate-500 text-[11px] italic">Unavailable</span>
+                            <span className="text-muted text-[11px] italic">Unavailable</span>
                           )}
                         </td>
                       </tr>

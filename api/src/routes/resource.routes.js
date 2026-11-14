@@ -7,7 +7,7 @@
 
 import { Router } from 'express';
 import { ResourceController } from '../controllers/resource.controller.js';
-import { authenticate, requireRoles } from '../middleware/auth.js';
+import { authenticate, optionalAuthenticate, requireRoles } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validate.js';
 import { validateMongoId } from '../validators/index.js';
 import {
@@ -25,6 +25,7 @@ const router = Router();
 // Resource discovery catalogue endpoints (accessible across authenticated/public roles)
 router.get(
   '/',
+  optionalAuthenticate,
   validateRequest({ query: validateResourceQuery }),
   ResourceController.listResources
 );

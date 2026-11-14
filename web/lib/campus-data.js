@@ -30,7 +30,8 @@ export const BUILDING_ARCHITECTURAL_PALETTES = Object.freeze({
   TSC: Object.freeze({
     code: "TSC",
     id: "bld-turing",
-    name: "Turing Science Center",
+    name: "Block A (Comp Labs)",
+    alias: "Turing Science Center",
     theme: "Sapphire Blue",
     architecturalStyle: "Flagship Research Tower & Computing Lab",
     // 3D Three.js Material Colors
@@ -52,7 +53,8 @@ export const BUILDING_ARCHITECTURAL_PALETTES = Object.freeze({
   HEC: Object.freeze({
     code: "HEC",
     id: "bld-hopper",
-    name: "Block B - ECE & EEE Laboratories",
+    name: "Block B (ECE/EE Labs)",
+    alias: "Block B - ECE & EEE Laboratories",
     theme: "Teal with Graphite",
     architecturalStyle: "Multi-tier ECE & EEE Engineering Complex & Laboratories",
     // 3D Three.js Material Colors
@@ -74,7 +76,8 @@ export const BUILDING_ARCHITECTURAL_PALETTES = Object.freeze({
   IC: Object.freeze({
     code: "IC",
     id: "bld-innovation",
-    name: "Innovation Center",
+    name: "Block D (Faculty & HOD)",
+    alias: "Innovation Center",
     theme: "Violet with Silver",
     architecturalStyle: "Contemporary Conference Center & Atrium",
     // 3D Three.js Material Colors
@@ -96,7 +99,8 @@ export const BUILDING_ARCHITECTURAL_PALETTES = Object.freeze({
   CCC: Object.freeze({
     code: "CCC",
     id: "bld-central",
-    name: "Central Campus Center",
+    name: "Main Campus Auditorium",
+    alias: "Central Campus Center",
     theme: "Warm Amber with Sandstone",
     architecturalStyle: "Civic University Assembly Hall & Barrel Vault",
     // 3D Three.js Material Colors
@@ -128,19 +132,28 @@ export function getBuildingArchitecturalPalette(codeOrId) {
   if (BUILDING_ARCHITECTURAL_PALETTES[codeOrId]) {
     return BUILDING_ARCHITECTURAL_PALETTES[codeOrId];
   }
-  const byId = Object.values(BUILDING_ARCHITECTURAL_PALETTES).find(
-    (p) => p.id === codeOrId || p.name === codeOrId || p.code === codeOrId
-  );
+  const str = String(codeOrId).toLowerCase();
+  const byId = Object.values(BUILDING_ARCHITECTURAL_PALETTES).find((p) => {
+    if (p.id.toLowerCase() === str || p.code.toLowerCase() === str || p.name.toLowerCase() === str) return true;
+    if (p.alias && p.alias.toLowerCase() === str) return true;
+    if ((str.includes("block a") || str.includes("turing") || str.includes("comp")) && p.code === "TSC") return true;
+    if ((str.includes("block b") || str.includes("ece") || str.includes("eee") || str.includes("hopper")) && p.code === "HEC") return true;
+    if ((str.includes("block d") || str.includes("faculty") || str.includes("hod") || str.includes("innovation")) && p.code === "IC") return true;
+    if ((str.includes("central") || str.includes("auditorium")) && p.code === "CCC") return true;
+    return false;
+  });
   return byId || BUILDING_ARCHITECTURAL_PALETTES.TSC;
 }
 
 export const VERIFIED_CAMPUS_BUILDINGS = [
   {
     id: "bld-turing",
-    name: "Turing Science Center",
+    name: "Block A (Comp Labs)",
+    alias: "Turing Science Center",
     code: "TSC",
     campus: "North Campus",
     floors: 3,
+    block: "BLOCK_A",
     architecturalType: "research",
     description:
       "Flagship computing and advanced computer science research facility with high-capacity lecture theaters and specialized GPU laboratories.",
@@ -149,17 +162,19 @@ export const VERIFIED_CAMPUS_BUILDINGS = [
     size: [7.5, 5, 8.5],
     accentColor: "#3B82F6",
     resources: [
-      { code: "LH-101", name: "Turing Lecture Hall", floor: "1", roomNumber: "101", capacity: 120, type: "Lecture Hall" },
-      { code: "LAB-301", name: "AI & Robotics Laboratory", floor: "3", roomNumber: "301", capacity: 45, type: "Computer Laboratory" },
-      { code: "LAB-302", name: "Systems & Networks Laboratory", floor: "3", roomNumber: "302", capacity: 40, type: "Computer Laboratory" },
+      { code: "LH-101", name: "Turing Lecture Hall", floor: "1", roomNumber: "101", capacity: 120, type: "Lecture Hall", block: "BLOCK_A", allowedRoles: ["STUDENT", "FACULTY", "DEPARTMENT_HEAD", "ADMIN"] },
+      { code: "LAB-301", name: "AI & Robotics Laboratory", floor: "3", roomNumber: "301", capacity: 45, type: "Computer Laboratory", block: "BLOCK_A", allowedRoles: ["STUDENT", "FACULTY", "DEPARTMENT_HEAD", "ADMIN"] },
+      { code: "LAB-302", name: "Systems & Networks Laboratory", floor: "3", roomNumber: "302", capacity: 40, type: "Computer Laboratory", block: "BLOCK_A", allowedRoles: ["STUDENT", "FACULTY", "DEPARTMENT_HEAD", "ADMIN"] },
     ],
   },
   {
     id: "bld-hopper",
-    name: "Block B - ECE & EEE Laboratories",
+    name: "Block B (ECE/EE Labs)",
+    alias: "Block B - ECE & EEE Laboratories",
     code: "HEC",
     campus: "North Campus",
     floors: 4,
+    block: "BLOCK_B",
     architecturalType: "lab",
     description:
       "Block B engineering complex housing Electronics & Communication (ECE) and Electrical & Electronics (EEE) design and testing laboratories.",
@@ -168,43 +183,50 @@ export const VERIFIED_CAMPUS_BUILDINGS = [
     size: [7.5, 6, 8],
     accentColor: "#14B8A6",
     resources: [
-      { code: "ECE-201", name: "ECE & VLSI Design Lab", floor: "2", roomNumber: "201", capacity: 35, type: "ECE & EE Laboratory" },
-      { code: "EEE-202", name: "Electrical Machines & Power Systems Lab", floor: "2", roomNumber: "202", capacity: 35, type: "ECE & EE Laboratory" },
-      { code: "LH-102", name: "Hopper Lecture Hall", floor: "1", roomNumber: "102", capacity: 80, type: "Lecture Hall" },
+      { code: "ECE-201", name: "ECE & VLSI Design Lab", floor: "2", roomNumber: "201", capacity: 35, type: "ECE & EE Laboratory", block: "BLOCK_B", allowedRoles: ["STUDENT", "FACULTY", "DEPARTMENT_HEAD", "ADMIN"] },
+      { code: "EEE-202", name: "Electrical Machines & Power Systems Lab", floor: "2", roomNumber: "202", capacity: 35, type: "ECE & EE Laboratory", block: "BLOCK_B", allowedRoles: ["STUDENT", "FACULTY", "DEPARTMENT_HEAD", "ADMIN"] },
+      { code: "LH-102", name: "Hopper Lecture Hall", floor: "1", roomNumber: "102", capacity: 80, type: "Lecture Hall", block: "BLOCK_B", allowedRoles: ["STUDENT", "FACULTY", "DEPARTMENT_HEAD", "ADMIN"] },
     ],
   },
   {
     id: "bld-innovation",
-    name: "Innovation Center",
+    name: "Block D (Faculty & HOD)",
+    alias: "Innovation Center",
     code: "IC",
     campus: "Central Campus",
     floors: 2,
+    block: "BLOCK_D",
     architecturalType: "seminar",
     description:
-      "Collaborative hub for departmental symposia, executive presentations, and hybrid videoconferencing.",
+      "Collaborative executive complex housing faculty collaborative rooms, departmental HOD suites, and seminar facilities.",
     // Procedural 3D scene placement (illustrative)
     position: [7, 2, 6.5],
     size: [6.5, 4, 8],
     accentColor: "#A855F7",
     resources: [
-      { code: "SEM-204", name: "Executive Seminar Room", floor: "2", roomNumber: "204", capacity: 25, type: "Seminar Room" },
+      { code: "SEM-204", name: "Executive Seminar Room", floor: "2", roomNumber: "204", capacity: 25, type: "Seminar Room", block: "BLOCK_D", roomCategory: "SEMINAR_ROOM", allowedRoles: ["STUDENT", "FACULTY", "DEPARTMENT_HEAD", "ADMIN"] },
+      { code: "FAC-301", name: "Faculty Collaborative Room Alpha", floor: "3", roomNumber: "301", capacity: 16, type: "Faculty Room", block: "BLOCK_D", roomCategory: "FACULTY_ROOM", allowedRoles: ["FACULTY", "DEPARTMENT_HEAD", "ADMIN"] },
+      { code: "HOD-401", name: "CS Department Head Dedicated Suite", floor: "4", roomNumber: "401", capacity: 12, type: "HOD Room", block: "BLOCK_D", roomCategory: "HOD_ROOM", allowedRoles: ["DEPARTMENT_HEAD", "ADMIN"] },
+      { code: "HOD-402", name: "ECE Department Head Dedicated Suite", floor: "4", roomNumber: "402", capacity: 10, type: "HOD Room", block: "BLOCK_D", roomCategory: "HOD_ROOM", allowedRoles: ["DEPARTMENT_HEAD", "ADMIN"] },
     ],
   },
   {
     id: "bld-central",
-    name: "Central Campus Center",
+    name: "Main Campus Auditorium",
+    alias: "Central Campus Center",
     code: "CCC",
     campus: "Central Campus",
     floors: 2,
+    block: "CENTRAL",
     architecturalType: "sports",
     description:
-      "Grand university hall designed for institutional assemblies, academic convocations, and guest lectures.",
+      "Grand university auditorium designed for institutional assemblies, academic convocations, and guest lectures.",
     // Procedural 3D scene placement (illustrative)
     position: [-7.5, 2.2, 6],
     size: [8.5, 4.4, 7.5],
     accentColor: "#F59E0B",
     resources: [
-      { code: "AUD-MAIN", name: "Main Campus Auditorium", floor: "1", roomNumber: "1", capacity: 500, type: "Auditorium" },
+      { code: "AUD-MAIN", name: "Main Campus Auditorium", floor: "1", roomNumber: "1", capacity: 500, type: "Auditorium", block: "CENTRAL", roomCategory: "AUDITORIUM", allowedRoles: ["STUDENT", "FACULTY", "DEPARTMENT_HEAD", "ADMIN"] },
     ],
   },
 ];

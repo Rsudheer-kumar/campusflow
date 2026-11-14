@@ -34,6 +34,7 @@ import {
 } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isFacultyOrHodRoom } from "@/lib/utils";
 
 const INITIAL_FORM = {
   name: "",
@@ -58,6 +59,12 @@ export default function ResourcesPage() {
   const { user } = useAuth();
   const canManage = Boolean(
     user?.roles?.includes("ADMIN") || user?.roles?.includes("FACILITY_MANAGER")
+  );
+  const isStudent = Boolean(
+    user?.roles?.includes("STUDENT") &&
+      !user?.roles?.some((r) =>
+        ["FACULTY", "ADMIN", "DEPARTMENT_HEAD", "FACILITY_MANAGER"].includes(r)
+      )
   );
 
   const [resources, setResources] = useState([]);
@@ -134,6 +141,9 @@ export default function ResourcesPage() {
   // Filtered resources
   const filteredResources = useMemo(() => {
     return resources.filter((r) => {
+      if (isStudent && isFacultyOrHodRoom(r)) {
+        return false;
+      }
       const matchesSearch =
         searchQuery.trim().length === 0 ||
         r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -144,7 +154,7 @@ export default function ResourcesPage() {
         selectedBuilding === "ALL" || r.location?.building === selectedBuilding;
       return matchesSearch && matchesBuilding;
     });
-  }, [resources, searchQuery, selectedBuilding]);
+  }, [resources, searchQuery, selectedBuilding, isStudent]);
 
   // Active categories only for resource creation
   const activeCategories = useMemo(() => {

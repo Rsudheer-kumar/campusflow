@@ -92,11 +92,8 @@ export function AuthProvider({ children }) {
             setIsLoading(false);
         }
     }, []);
-    // Quick switch role between demo accounts for easy inspection (development only)
+    // Quick switch role between demo accounts for easy inspection
     const switchRole = useCallback(async (role) => {
-        if (process.env.NODE_ENV !== "development") {
-            return;
-        }
         setIsLoading(true);
         try {
             const emailMap = {
@@ -107,7 +104,10 @@ export function AuthProvider({ children }) {
             };
             const email = emailMap[role] || "student@campusflow.edu";
             const data = await api.auth.login(email, "CampusFlow@2026!");
-            setUser(data.user);
+            if (data?.user) {
+                setUser(data.user);
+                setStoredUser(data.user);
+            }
         }
         finally {
             setIsLoading(false);

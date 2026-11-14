@@ -18,7 +18,11 @@ export class ResourceController {
   static async listResources(req, res) {
     try {
       const filters = req.query || {};
-      const cacheKey = `resources_${JSON.stringify(filters)}`;
+      const userRoles = req.user?.roles || [];
+      const isStudentOnly = userRoles.includes('STUDENT') &&
+        !userRoles.some((r) => ['FACULTY', 'ADMIN', 'DEPARTMENT_HEAD', 'FACILITY_MANAGER'].includes(r));
+
+      const cacheKey = `resources_${userRoles.sort().join(',')}_${JSON.stringify(filters)}`;
       const cached = memoryCache.get(cacheKey);
       if (cached) {
         return sendSuccess(res, cached);
@@ -27,6 +31,13 @@ export class ResourceController {
       const { search, building, status, resourceType, page = 1, limit = 20 } = filters;
 
       const query = {};
+
+      // Restrict HOD and Faculty rooms from students
+      if (isStudentOnly) {
+        query.roomCategory = { $nin: ['HOD_ROOM', 'FACULTY_ROOM'] };
+        query.code = { $not: /^(HOD|FAC)-/i };
+        query.allowedRoles = { $in: ['STUDENT'] };
+      }
 
       if (status) {
         query.status = status;

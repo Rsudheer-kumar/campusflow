@@ -288,6 +288,7 @@ export async function getBuildingAvailability(req, res, next) {
       timezone,
       limit: limit ? Number(limit) : 50,
       userId: effectiveUserId,
+      userRoles: req.user?.roles || [],
     });
 
     if (!result) {

@@ -522,19 +522,22 @@ export class AvailabilityService {
     // Fallback: match by flexible building pattern or block alias
     if (!resources || resources.length === 0) {
       const isBlockB = /ece|eee|hopper|electrical|block\s*b/i.test(building);
-      const isBlockA = /turing|computer|block\s*a/i.test(building);
+      const isBlockA = /turing|computer|comp\s*labs|block\s*a/i.test(building);
       const isCentral = /central|auditorium/i.test(building);
-      const isInnovation = /innovation|seminar|faculty|block\s*d/i.test(building);
+      const isInnovation = /innovation|seminar|faculty|hod|block\s*d/i.test(building);
+      const isBlockC = /chem|chemical|block\s*c/i.test(building);
 
       let fallbackPattern = null;
       if (isBlockB) {
         fallbackPattern = /Block\s*B|Hopper|Electrical|ECE|EEE/i;
       } else if (isBlockA) {
-        fallbackPattern = /Block\s*A|Turing/i;
+        fallbackPattern = /Block\s*A|Turing|Computer/i;
       } else if (isCentral) {
         fallbackPattern = /Central\s*Campus|Auditorium/i;
       } else if (isInnovation) {
-        fallbackPattern = /Innovation|Faculty|Block\s*D/i;
+        fallbackPattern = /Innovation|Faculty|Block\s*D|HOD/i;
+      } else if (isBlockC) {
+        fallbackPattern = /Block\s*C|Chemical/i;
       }
 
       if (fallbackPattern) {
@@ -550,6 +553,23 @@ export class AvailabilityService {
 
     if (!resources || resources.length === 0) {
       return null;
+    }
+
+    // Role-based visibility: hide HOD and Faculty rooms from students
+    const isStudentOnly = Array.isArray(params.userRoles) &&
+      params.userRoles.includes('STUDENT') &&
+      !params.userRoles.some((r) => ['FACULTY', 'ADMIN', 'DEPARTMENT_HEAD', 'FACILITY_MANAGER'].includes(r));
+
+    if (isStudentOnly) {
+      resources = resources.filter((r) => {
+        if (r.roomCategory === 'HOD_ROOM' || r.roomCategory === 'FACULTY_ROOM') return false;
+        if (r.code && (r.code.startsWith('HOD-') || r.code.startsWith('FAC-'))) return false;
+        if (Array.isArray(r.allowedRoles) && r.allowedRoles.length > 0 && !r.allowedRoles.includes('STUDENT')) return false;
+        return true;
+      });
+      if (resources.length === 0) {
+        return null;
+      }
     }
 
     const resourceIds = resources.map((r) => r._id);
@@ -1120,6 +1140,9 @@ export class AvailabilityService {
           name: resource.name,
           code: resource.code,
           capacity: resource.capacity,
+          block: resource.block || resource.location?.block || '',
+          roomCategory: resource.roomCategory || '',
+          allowedRoles: resource.allowedRoles || [],
           floor: resource.location?.floor || '1',
           roomNumber: resource.location?.roomNumber || '',
           resourceType: resource.resourceType ? {
@@ -1147,6 +1170,9 @@ export class AvailabilityService {
           name: resource.name,
           code: resource.code,
           capacity: resource.capacity,
+          block: resource.block || resource.location?.block || '',
+          roomCategory: resource.roomCategory || '',
+          allowedRoles: resource.allowedRoles || [],
           floor: resource.location?.floor || '1',
           roomNumber: resource.location?.roomNumber || '',
           resourceType: resource.resourceType ? {
