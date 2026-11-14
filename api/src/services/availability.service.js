@@ -16,7 +16,11 @@ import {
   TimetableEntry,
 } from '../models/index.js';
 import { getZonedParts, zonedTimeToUtc, intervalsOverlap } from '../utils/timezone.js';
-import { timeStringToMinutes, isValidCalendarDate } from '../utils/dateValidation.js';
+import {
+  timeStringToMinutes,
+  isValidCalendarDate,
+  getRecurringCampusHoliday,
+} from '../utils/dateValidation.js';
 import { BadRequestError } from '../utils/errors.js';
 import { QuotaService } from './quota.service.js';
 import { HolidayService } from './holiday.service.js';
@@ -119,6 +123,19 @@ export class AvailabilityService {
         available: false,
         reason: 'NO_AVAILABILITY_RULE',
         message: 'No active availability rule is currently effective for this resource on the requested date',
+      };
+    }
+
+    const recurringHoliday = getRecurringCampusHoliday(localStartParts.dateString);
+    if (recurringHoliday) {
+      return {
+        available: false,
+        reason: 'HOLIDAY_CONFLICT',
+        message: `The facility is closed due to holiday: ${recurringHoliday.name} (${recurringHoliday.reason})`,
+        details: {
+          holidayName: recurringHoliday.name,
+          reason: recurringHoliday.reason,
+        },
       };
     }
 
@@ -334,6 +351,11 @@ export class AvailabilityService {
 
     if (!isValidCalendarDate(date)) {
       throw new BadRequestError(`Invalid calendar date: "${date}". Expected format YYYY-MM-DD.`);
+    }
+
+    const recurringHoliday = getRecurringCampusHoliday(date);
+    if (recurringHoliday) {
+      return [];
     }
 
     const resource = await Resource.findById(resourceId).lean();

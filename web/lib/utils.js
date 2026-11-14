@@ -114,6 +114,33 @@ export function utcToLocalParts(utcDateOrIso, tz = "UTC") {
 }
 
 /**
+ * Returns the recurring campus closure for Sundays and the second Saturday.
+ * The date is interpreted as a calendar date, not as a browser-local instant.
+ */
+export function isRecurringCampusHoliday(dateStr) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr || "")) return null;
+    const date = new Date(`${dateStr}T12:00:00.000Z`);
+    const weekday = date.getUTCDay();
+    if (weekday === 0) {
+        return {
+            name: "Sunday Holiday",
+            date: dateStr,
+            reason: "The campus is closed every Sunday.",
+            scope: "CAMPUS_WIDE",
+        };
+    }
+    if (weekday === 6 && date.getUTCDate() >= 8 && date.getUTCDate() <= 14) {
+        return {
+            name: "Second Saturday Holiday",
+            date: dateStr,
+            reason: "The campus is closed on the second Saturday of every month.",
+            scope: "CAMPUS_WIDE",
+        };
+    }
+    return null;
+}
+
+/**
  * Evaluates whether a given facility is restricted to Faculty/HOD and not bookable by students.
  *
  * @param {Object} [resource] - Target resource or facility object.
@@ -132,5 +159,4 @@ export function isFacultyOrHodRoom(resource) {
     }
     return false;
 }
-
 

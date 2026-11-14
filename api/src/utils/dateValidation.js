@@ -31,6 +31,35 @@ export function isValidCalendarDate(dateStr) {
 }
 
 /**
+ * Returns the recurring campus closure for a calendar date.
+ * Sundays and the second Saturday of each month are non-working days.
+ */
+export function getRecurringCampusHoliday(dateStr) {
+  if (!isValidCalendarDate(dateStr)) return null;
+
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+
+  if (weekday === 0) {
+    return {
+      name: 'Sunday Holiday',
+      date: dateStr,
+      reason: 'The campus is closed every Sunday.',
+    };
+  }
+
+  if (weekday === 6 && day >= 8 && day <= 14) {
+    return {
+      name: 'Second Saturday Holiday',
+      date: dateStr,
+      reason: 'The campus is closed on the second Saturday of every month.',
+    };
+  }
+
+  return null;
+}
+
+/**
  * Converts a 24-hour time string (00:00 through 24:00) to total minutes from start of day.
  * Supports "24:00" normalized to 1440 minutes.
  *

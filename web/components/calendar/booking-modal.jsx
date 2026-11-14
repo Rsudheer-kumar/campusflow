@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Clock, Building2, ShieldCheck, Wrench } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
-import { resolveReservationTimezone, localToUtc, utcToLocalParts } from "@/lib/utils";
+import {
+    isRecurringCampusHoliday,
+    resolveReservationTimezone,
+    localToUtc,
+    utcToLocalParts,
+} from "@/lib/utils";
 function getInitialValues(initialStartAt, initialEndAt, tz = "UTC") {
     if (initialStartAt && initialEndAt) {
         const sParts = utcToLocalParts(initialStartAt, tz);
@@ -47,12 +52,16 @@ function BookingModalContent({ open, onClose, resource, initialStartAt, initialE
             if (!ignore && Array.isArray(data)) {
                 setHolidaysList(data);
             }
-        }).catch(() => {});
+        }).catch((error) => {
+            console.error("Failed to load holidays for booking validation", error);
+        });
         return () => { ignore = true; };
     }, []);
 
     const holidayOnDate = useMemo(() => {
         if (!date) return null;
+        const recurringHoliday = isRecurringCampusHoliday(date);
+        if (recurringHoliday) return recurringHoliday;
         if (date >= "2026-12-25" && date <= "2026-12-31") {
             return {
                 name: date === "2026-12-25" ? "Christmas Day" : date === "2026-12-31" ? "New Year's Eve (Campus Closure)" : "Winter Break & Year-End Closure",

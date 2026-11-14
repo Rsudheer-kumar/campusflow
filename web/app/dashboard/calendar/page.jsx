@@ -31,7 +31,13 @@ import { HolidayNoticeModal } from "@/components/calendar/holiday-notice-modal";
 import { DeclareHolidayModal } from "@/components/calendar/declare-holiday-modal";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { cn, resolveReservationTimezone, localToUtc, isFacultyOrHodRoom } from "@/lib/utils";
+import {
+  cn,
+  isRecurringCampusHoliday,
+  resolveReservationTimezone,
+  localToUtc,
+  isFacultyOrHodRoom,
+} from "@/lib/utils";
 
 function CalendarView() {
   const { user } = useAuth();
@@ -459,6 +465,9 @@ function CalendarView() {
 
   // Helper to test if a given dayDateStr is a holiday
   const getHolidayForDate = (dateStr) => {
+    const recurringHoliday = isRecurringCampusHoliday(dateStr);
+    if (recurringHoliday) return recurringHoliday;
+
     const matched = holidays.find((h) => {
       if (h.date === dateStr) return true;
       if (h.startDate && h.endDate && dateStr >= h.startDate && dateStr <= h.endDate) return true;
