@@ -3,26 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 
-const DURATION = 1200;
-const E = {
-  c: (v) => (v < 0 ? 0 : v > 1 ? 1 : v),
-  s: (t, a, b) => E.c((t - a) / (b - a)),
-  io: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
-  o: (t) => 1 - Math.pow(1 - t, 3),
-};
-
-const frame = (t) => ({ "--p1": E.io(t) * 136 + "%" });
-
-function sample(fn, c) {
-  const k = [];
-  for (let i = 0; i <= 48; i++) {
-    const o = fn(i / 48, c, E);
-    o.offset = i / 48;
-    k.push(o);
-  }
-  return k;
-}
-
 export function ThemeToggle({ className, id = "themeToggle" }) {
   const btnRef = useRef(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -78,36 +58,13 @@ export function ThemeToggle({ className, id = "themeToggle" }) {
     }
 
     const r = btn.getBoundingClientRect();
-    const W = window.innerWidth;
-    const H = window.innerHeight;
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
-    const c = {
-      x,
-      y,
-      W,
-      H,
-      R: Math.hypot(Math.max(x, W - x), Math.max(y, H - y)),
-      b: { l: r.left, t: r.top, w: r.width, h: r.height },
-      toDark: goingDark,
-    };
 
-    root.style.setProperty("--vt-x", x + "px");
-    root.style.setProperty("--vt-y", y + "px");
-    root.classList.add("vt-wash", goingDark ? "vt-dark" : "vt-light");
+    root.style.setProperty("--vt-x", `${x.toFixed(1)}px`);
+    root.style.setProperty("--vt-y", `${y.toFixed(1)}px`);
 
-    const vt = document.startViewTransition(apply);
-
-    vt.ready.then(() => {
-      const o = { duration: DURATION, easing: "linear", fill: "both" };
-      root.animate(sample(frame, c), Object.assign({ pseudoElement: "::view-transition-new(root)" }, o));
-    });
-
-    const done = () => {
-      root.classList.remove("vt-wash", "vt-dark", "vt-light");
-    };
-
-    vt.finished.then(done, done);
+    document.startViewTransition(apply);
   };
 
   return (

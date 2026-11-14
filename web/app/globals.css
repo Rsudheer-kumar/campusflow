@@ -578,21 +578,23 @@ nextjs-portal,
   display: block;
 }
 
-/* 2c · The "Soft wash" transition (uses View Transitions API: Chrome, Edge, Safari 18+) */
-@property --p1 {
-  syntax: "<percentage>";
-  inherits: false;
-  initial-value: 0%;
-}
-
-html.vt-wash::view-transition-old(root),
-html.vt-wash::view-transition-new(root) {
+/* 2c · Optimized hardware-accelerated circular reveal for theme transition */
+::view-transition-old(root) {
   animation: none;
-  mix-blend-mode: normal;
+  z-index: 1;
 }
 
-html.vt-wash::view-transition-new(root) {
-  mask-image: linear-gradient(to left, #000 calc(var(--p1) - 35%), transparent var(--p1));
-  -webkit-mask-image: linear-gradient(to left, #000 calc(var(--p1) - 35%), transparent var(--p1));
+::view-transition-new(root) {
+  animation: 320ms cubic-bezier(0.16, 1, 0.3, 1) both vt-reveal;
+  z-index: 2;
+}
+
+@keyframes vt-reveal {
+  from {
+    clip-path: circle(0px at var(--vt-x, 50%) var(--vt-y, 50%));
+  }
+  to {
+    clip-path: circle(150vmax at var(--vt-x, 50%) var(--vt-y, 50%));
+  }
 }
 
