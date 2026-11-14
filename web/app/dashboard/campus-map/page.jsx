@@ -7,7 +7,7 @@ import { CampusWorkspace } from "@/components/campus/campus-workspace";
 
 export default function CampusMapPage() {
   return (
-    <div className="min-h-full py-6 sm:py-8 grid-background">
+    <div className="min-h-full py-6 sm:py-8 bg-background">
       <PageContainer className="space-y-6 max-w-[1600px] mx-auto">
         {/* Top Header & Breadcrumb */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/60">

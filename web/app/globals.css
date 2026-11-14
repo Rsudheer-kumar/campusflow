@@ -234,28 +234,14 @@ button {
 }
 
 /* ─────────────────────────────────────────────
-   BACKGROUND PATTERNS
+   BACKGROUND PATTERNS (Removed per design request)
    ───────────────────────────────────────────── */
 .grid-background {
-  background-image:
-    linear-gradient(
-      var(--border) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      var(--border) 1px,
-      transparent 1px
-    );
-  background-size: 40px 40px;
+  background-image: none !important;
 }
 
 .dot-background {
-  background-image: radial-gradient(
-    var(--border) 1px,
-    transparent 1px
-  );
-  background-size: 24px 24px;
+  background-image: none !important;
 }
 
 /* ─────────────────────────────────────────────

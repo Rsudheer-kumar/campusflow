@@ -435,7 +435,7 @@ export default function AvailabilityRulesPage() {
   };
 
   return (
-    <div className="min-h-full py-8 grid-background">
+    <div className="min-h-full py-8 bg-background">
       <PageContainer className="space-y-6">
         <PageHeader
           title="Availability & Booking Rules Engine"

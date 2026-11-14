@@ -362,7 +362,7 @@ export default function ApprovalPoliciesPage() {
   // Unauthorized view for Students / unauthorized roles
   if (!isAuthorized) {
     return (
-      <div className="min-h-full py-8 grid-background">
+      <div className="min-h-full py-8 bg-background">
         <PageContainer className="space-y-6">
           <PageHeader
             title="Approval Policies"
@@ -395,7 +395,7 @@ export default function ApprovalPoliciesPage() {
   }
 
   return (
-    <div className="min-h-full py-8 grid-background">
+    <div className="min-h-full py-8 bg-background">
       <PageContainer className="space-y-6">
         <PageHeader
           title="Approval Policy Administration"

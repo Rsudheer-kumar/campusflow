@@ -20,7 +20,7 @@ function Section({ title, children, }) {
 export default function DesignSystemPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("overview");
-    return (<main className="min-h-screen grid-background py-10">
+    return (<main className="min-h-screen bg-background py-10">
       <PageContainer className="space-y-14">
         {/* ── Page Header ── */}
         <PageHeader title="Design System" description="Reusable UI foundation for CampusFlow — Phase 1.2" action={<Button size="sm" icon={<Settings className="h-4 w-4"/>}>

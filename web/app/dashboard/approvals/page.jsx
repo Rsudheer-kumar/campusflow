@@ -125,7 +125,7 @@ export default function ApprovalsPage() {
             setIsRejecting(false);
         }
     };
-    return (<div className="min-h-full py-8 grid-background">
+    return (<div className="min-h-full py-8 bg-background">
       <PageContainer className="space-y-6">
         <PageHeader title="Approval Queue" description="Review, verify, and action pending resource booking requests under campus workflow policies." action={<Button size="sm" variant="outline" icon={<RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")}/>} onClick={fetchQueue}>
               Refresh Queue

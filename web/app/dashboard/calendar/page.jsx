@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Plus,
   Lock,
   CalendarCheck,
@@ -62,6 +63,7 @@ function CalendarView() {
   const [selectedBlock, setSelectedBlock] = useState("ALL");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [holidays, setHolidays] = useState([]);
+  const [holidaysOpen, setHolidaysOpen] = useState(false);
   const [noticeHoliday, setNoticeHoliday] = useState(null);
   const [isDeclareHolidayOpen, setIsDeclareHolidayOpen] = useState(false);
 
@@ -514,7 +516,7 @@ function CalendarView() {
   };
 
   return (
-    <div className="min-h-full py-8 grid-background">
+    <div className="min-h-full py-8 bg-background">
       <PageContainer className="space-y-6">
         {/* Header with Title and Action Button */}
         <PageHeader
@@ -577,18 +579,53 @@ function CalendarView() {
           ))}
         </div>
 
-        {/* Holiday Announcement Banner */}
+        {/* Holiday Drop Bar (Collapsible Dropdown list replacing caution alert) */}
         {holidays.length > 0 && (
-          <div className="p-3.5 rounded-[var(--radius-md)] bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center gap-3">
-            <span className="text-lg">🏛️</span>
-            <div>
-              <div className="font-semibold text-xs uppercase tracking-wider text-amber-200">
-                Official Campus Holiday / Institutional Closure
+          <div className="rounded-[var(--radius-md)] border border-border bg-surface shadow-xs overflow-hidden transition-all">
+            <button
+              type="button"
+              onClick={() => setHolidaysOpen((prev) => !prev)}
+              className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-foreground hover:bg-surface-2/60 transition-colors cursor-pointer select-none"
+              aria-expanded={holidaysOpen}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs">
+                  🏛️
+                </span>
+                <span className="font-semibold text-foreground">
+                  Official Campus Holidays & Institutional Closures
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold text-[11px] border border-amber-500/30">
+                  {holidays.length} Days
+                </span>
               </div>
-              <div className="text-xs mt-0.5">
-                {holidays.map((h) => `${h.name} (${h.date}): ${h.reason}`).join(" • ")}
+              <div className="flex items-center gap-1.5 text-muted">
+                <span className="text-[11px] font-normal">{holidaysOpen ? "Hide list" : "View holiday list"}</span>
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", holidaysOpen && "rotate-180")} />
               </div>
-            </div>
+            </button>
+            {holidaysOpen && (
+              <div className="px-4 py-3 border-t border-border bg-surface-2/30 max-h-56 overflow-y-auto divide-y divide-border/40 text-xs">
+                {holidays.map((h) => (
+                  <div key={h.date + h.name} className="py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-foreground">{h.name}</span>
+                      <span className="text-muted text-[11px]">({h.reason || "Official Institutional Closure"})</span>
+                    </div>
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      {h.scope === "BLOCK_SPECIFIC" && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                          Block {h.targetBlocks?.join(", ")}
+                        </span>
+                      )}
+                      <span className="font-mono text-primary font-bold bg-primary/10 px-2 py-0.5 rounded text-[11px]">
+                        {h.date}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -854,18 +891,18 @@ function CalendarView() {
                ══════════════════════════════════════════════════════════ */}
             {viewMode === "month" && (
               <div className="space-y-4">
-                <Card className="p-0 border-border overflow-hidden" noPadding>
+                <Card className="p-0 border-2 border-border/90 shadow-md rounded-[var(--radius-lg)] overflow-hidden bg-surface" noPadding>
                   {/* Days of Week Header */}
-                  <div className="grid grid-cols-7 border-b border-border bg-surface-2/70 text-center font-bold text-xs uppercase tracking-wider text-muted py-2.5">
+                  <div className="grid grid-cols-7 border-b-2 border-border bg-surface-2 text-center font-extrabold text-xs uppercase tracking-wider text-foreground py-3">
                     {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayName, idx) => (
-                      <div key={idx} className={cn("px-1", idx >= 5 && "text-muted/60")}>
+                      <div key={idx} className={cn("px-1", idx >= 5 ? "text-primary font-black" : "text-foreground font-extrabold")}>
                         {dayName}
                       </div>
                     ))}
                   </div>
 
                   {/* 42-Day Month Grid */}
-                  <div className="grid grid-cols-7 divide-x divide-y divide-border/50 bg-surface">
+                  <div className="grid grid-cols-7 divide-x divide-y divide-border bg-surface border-t border-border">
                     {monthDays.map((d, index) => {
                       const dayStr = d.toISOString().slice(0, 10);
                       const isCurrentMonth = d.getUTCMonth() === selectedDate.getUTCMonth();
@@ -887,23 +924,27 @@ function CalendarView() {
                               });
                             }
                           }}
+                          onDoubleClick={() => {
+                            setSelectedDate(d);
+                            setViewMode("day");
+                          }}
                           className={cn(
-                            "min-h-[96px] md:min-h-[112px] p-2 transition-all cursor-pointer relative flex flex-col justify-between group",
-                            !isCurrentMonth && "bg-surface-2/20 text-muted/40 opacity-55",
-                            isCurrentMonth && "hover:bg-primary/5",
-                            isSelected && "ring-2 ring-primary ring-inset bg-primary/10",
-                            isToday && "bg-primary/5 font-semibold",
-                            availability.holiday && "bg-amber-950/20"
+                            "min-h-[108px] md:min-h-[124px] p-2.5 transition-all cursor-pointer relative flex flex-col justify-between group",
+                            !isCurrentMonth && "bg-surface-2/40 text-muted/60",
+                            isCurrentMonth && "hover:bg-primary/5 bg-surface",
+                            isSelected && "ring-2.5 ring-primary ring-inset bg-primary/10 shadow-xs",
+                            isToday && !isSelected && "bg-primary/5 font-semibold",
+                            availability.holiday && "bg-amber-500/10 dark:bg-amber-950/20"
                           )}
                         >
                           {/* Top Row: Date Number and Status Badge */}
                           <div className="flex items-center justify-between">
                             <span
                               className={cn(
-                                "h-6 w-6 rounded-full flex items-center justify-center text-xs font-semibold",
-                                isToday && "bg-primary text-white font-bold shadow-xs",
-                                isSelected && !isToday && "bg-foreground/15 text-foreground font-bold",
-                                !isToday && !isSelected && "text-foreground/90"
+                                "h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold transition-transform",
+                                isToday && "bg-primary text-white font-extrabold shadow-sm",
+                                isSelected && !isToday && "ring-2 ring-primary bg-primary/15 text-primary font-black",
+                                !isToday && !isSelected && (isCurrentMonth ? "text-foreground font-bold" : "text-muted/60 font-medium")
                               )}
                             >
                               {d.getUTCDate()}
@@ -911,40 +952,40 @@ function CalendarView() {
 
                             {/* Status Pills */}
                             {availability.holiday ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-tight">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/35 uppercase tracking-tight">
                                 Holiday
                               </span>
                             ) : availability.isMaintenance ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/20 text-red-300 border border-red-500/30 uppercase tracking-tight">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/35 uppercase tracking-tight">
                                 Locked
                               </span>
                             ) : availability.isFullyBooked ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase tracking-tight">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/35 uppercase tracking-tight">
                                 Full
                               </span>
                             ) : availability.isPartiallyBooked ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/35">
                                 {availability.availableHours}h Free
                               </span>
                             ) : availability.isPastDay ? (
-                              <span className="text-[9px] text-muted/50 font-mono">Past</span>
+                              <span className="text-[10px] text-muted/60 font-mono font-medium">Past</span>
                             ) : (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-500/35">
                                 12h Open
                               </span>
                             )}
                           </div>
 
                           {/* Middle: Content Tags / Mini Dots */}
-                          <div className="space-y-1 my-1">
+                          <div className="space-y-1 my-1.5">
                             {availability.holiday && (
-                              <p className="text-[10px] text-amber-300/90 truncate font-medium">
+                              <p className="text-[10px] text-amber-700 dark:text-amber-300 font-bold truncate">
                                 🏛️ {availability.holiday.name}
                               </p>
                             )}
 
                             {availability.dayTt.length > 0 && (
-                              <div className="flex items-center gap-1 text-[10px] text-primary-bright/90 truncate font-medium">
+                              <div className="flex items-center gap-1.5 text-[10px] text-primary font-bold truncate">
                                 <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
                                 <span className="truncate">
                                   {availability.dayTt.length} Class Session
@@ -954,8 +995,8 @@ function CalendarView() {
                             )}
 
                             {availability.dayBk.length > 0 && (
-                              <div className="flex items-center gap-1 text-[10px] text-emerald-400 truncate font-medium">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                              <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold truncate">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
                                 <span className="truncate">
                                   {availability.dayBk.length} Reservation
                                   {availability.dayBk.length > 1 ? "s" : ""}
@@ -965,13 +1006,25 @@ function CalendarView() {
                           </div>
 
                           {/* Bottom Row: Quick Action Pill */}
-                          <div className="pt-1 flex items-center justify-between text-[10px] text-muted">
-                            <span className="text-[9px] opacity-70">
+                          <div className="pt-1.5 flex items-center justify-between text-[11px] border-t border-border/30 mt-1">
+                            <span className="text-[10px] text-muted font-medium">
                               {availability.bookedHours > 0 ? `${availability.bookedHours}h booked` : "Clear"}
                             </span>
-                            <span className="text-primary text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedDate(d);
+                                setViewMode("day");
+                              }}
+                              className={cn(
+                                "inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-bright px-2 py-0.5 rounded hover:bg-primary/10 transition-all cursor-pointer shadow-xs",
+                                isSelected ? "opacity-100 bg-primary/10" : "opacity-0 group-hover:opacity-100"
+                              )}
+                              title={`Inspect day time slots for ${dayStr}`}
+                            >
                               Inspect →
-                            </span>
+                            </button>
                           </div>
                         </div>
                       );
@@ -999,10 +1052,10 @@ function CalendarView() {
                         variant="secondary"
                         size="sm"
                         onClick={() => setViewMode("day")}
-                        className="text-xs font-semibold"
+                        className="text-xs font-bold"
                       >
                         <Clock className="h-3.5 w-3.5 mr-1 text-primary" />
-                        Detailed Day View
+                        Inspect Day Time Slots →
                       </Button>
                       <Button
                         variant="primary"
@@ -1593,7 +1646,7 @@ export default function CalendarPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-full py-8 grid-background">
+        <div className="min-h-full py-8 bg-background">
           <PageContainer>
             <Skeleton className="h-10 w-48 mb-6" />
             <Skeleton className="h-96 w-full" />

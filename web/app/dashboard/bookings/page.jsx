@@ -95,7 +95,7 @@ export default function BookingsPage() {
         if (filterTab === "CANCELLED") return cancelledBookings;
         return bookings;
     }, [bookings, filterTab, pendingBookings, activeBookings, completedBookings, cancelledBookings]);
-    return (<div className="min-h-full py-8 grid-background">
+    return (<div className="min-h-full py-8 bg-background">
       <PageContainer className="space-y-6">
         <PageHeader title="My Reservations & Bookings" description="View, manage, and inspect your campus facility reservations and booking history." action={<Link href="/dashboard/calendar">
               <Button size="sm" icon={<Plus className="h-4 w-4"/>}>
