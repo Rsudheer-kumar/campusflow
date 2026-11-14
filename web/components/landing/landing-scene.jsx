@@ -66,7 +66,7 @@ export function LandingScene() {
   const shouldRender = isInView && !prefersReducedMotion && !isScrolling;
 
   return (
-    <div ref={containerRef} className="w-full h-full relative group">
+    <div ref={containerRef} className="w-full h-full relative group bg-[#070C18]">
       {/* Desktop Interaction Hint */}
       <div className="absolute bottom-32 right-6 md:bottom-8 md:right-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none hidden sm:flex items-center gap-2 bg-[#0B1224]/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#1E2A44] text-[#94A3B8] text-[11px] font-medium tracking-wide shadow-lg">
         Drag to orbit &bull; Ctrl + scroll to zoom
@@ -96,7 +96,7 @@ export function LandingScene() {
                 depth: true,
               }}
               camera={{ position: [20, 16, 26], fov: 40 }}
-              style={{ width: "100%", height: "100%", background: "transparent" }}
+              style={{ width: "100%", height: "100%", background: "#070C18" }}
               frameloop={shouldRender ? "always" : "never"}
               onCreated={() => {
                 setSceneReady(true);

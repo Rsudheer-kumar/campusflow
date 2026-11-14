@@ -82,30 +82,30 @@ export default function LandingPage() {
 
       <main>
         {/* HERO SECTION */}
-        <section className="relative h-[100dvh] w-full flex items-center justify-center overflow-hidden">
+        <section className="relative h-[100dvh] w-full flex items-center justify-center overflow-hidden bg-[#070C18]">
           {/* 3D Background */}
-          <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 z-0 bg-[#070C18]">
             <LandingScene />
           </div>
 
-          {/* Controlled Localized Gradient: Keeps heading area readable while preserving 3D campus visibility */}
-          <div className="absolute inset-y-0 left-0 w-full md:w-3/5 lg:w-[46%] z-[1] pointer-events-none bg-gradient-to-b from-background/70 via-background/30 to-transparent md:bg-gradient-to-r md:from-background/70 md:via-background/25 md:to-transparent" />
+          {/* Controlled Localized Dark Vignette: Deepens contrast behind hero text without milky white wash */}
+          <div className="absolute inset-y-0 left-0 w-full md:w-3/5 lg:w-[48%] z-[1] pointer-events-none bg-gradient-to-b from-[#070C18]/90 via-[#070C18]/50 to-transparent md:bg-gradient-to-r md:from-[#070C18]/90 md:via-[#070C18]/45 md:to-transparent" />
 
           {/* Hero Content Overlay */}
           <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center h-full pt-16 pointer-events-none">
 
             <div className="w-full md:w-3/5 lg:w-1/2 flex flex-col items-start text-left mt-10 md:mt-0 pointer-events-auto">
-              <motion.div custom={1} initial="hidden" animate="visible" variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full surface border border-border mb-6 pointer-events-auto shadow-[0_0_20px_rgba(79,140,255,0.1)]">
-                <Sparkles className="h-4 w-4 text-primary"/>
-                <span className="text-xs md:text-sm font-medium tracking-wide">Next-Gen Campus Platform</span>
+              <motion.div custom={1} initial="hidden" animate="visible" variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111C30]/85 border border-white/10 mb-6 pointer-events-auto shadow-[0_0_20px_rgba(79,140,255,0.15)] backdrop-blur-sm">
+                <Sparkles className="h-4 w-4 text-sky-400"/>
+                <span className="text-xs md:text-sm font-medium tracking-wide text-slate-200">Next-Gen Campus Platform</span>
               </motion.div>
 
               <motion.div custom={2} initial="hidden" animate="visible" variants={fadeUp} className="w-full">
                 <Text3DFlip
                   as="h1"
-                  className="font-[family-name:var(--font-serif-display)] text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 drop-shadow-sm leading-[1.1]"
-                  textClassName="text-foreground"
-                  flipTextClassName="text-primary"
+                  className="font-[family-name:var(--font-serif-display)] text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 drop-shadow-md leading-[1.1]"
+                  textClassName="text-white"
+                  flipTextClassName="text-sky-400"
                   rotateDirection="top"
                   staggerDuration={0.03}
                   staggerFrom="first"
@@ -117,7 +117,7 @@ export default function LandingPage() {
                 </Text3DFlip>
               </motion.div>
 
-              <motion.p custom={3} initial="hidden" animate="visible" variants={fadeUp} className="charm-regular text-lg md:text-2xl text-muted/90 max-w-xl mb-10 drop-shadow-sm leading-relaxed">
+              <motion.p custom={3} initial="hidden" animate="visible" variants={fadeUp} className="charm-regular text-lg md:text-2xl text-slate-300 max-w-xl mb-10 drop-shadow leading-relaxed">
                 Navigate your university through an interactive digital twin. Book laboratories, seminar halls, and equipment from one intelligent, unified interface.
               </motion.p>
 
@@ -129,7 +129,7 @@ export default function LandingPage() {
                   </ShinyButton>
                 </Link>
                 <Link href="#how-it-works" className="w-full sm:w-auto">
-                  <ShinyButton className="h-14 px-8 text-base bg-surface text-foreground border-border hover:border-primary/50 shadow-sm w-full sm:w-auto">
+                  <ShinyButton className="h-14 px-8 text-base bg-white/10 hover:bg-white/15 text-white border-white/20 backdrop-blur-md shadow-sm w-full sm:w-auto">
                     See How It Works
                   </ShinyButton>
                 </Link>
@@ -140,8 +140,8 @@ export default function LandingPage() {
             <div className="hidden md:block w-full md:w-2/5 lg:w-1/2"></div>
           </div>
 
-          {/* Bottom Soft Edge Blend: Prevents harsh horizontal cut without creating a dark/muddy band */}
-          <div className="absolute bottom-0 inset-x-0 h-16 md:h-20 bg-gradient-to-t from-background via-background/40 to-transparent z-[2] pointer-events-none" />
+          {/* Bottom Soft Edge Blend: Smoothly transitions from the dark 3D digital twin into the features section */}
+          <div className="absolute bottom-0 inset-x-0 h-16 md:h-24 bg-gradient-to-t from-background via-background/60 to-transparent z-[2] pointer-events-none" />
         </section>
 
         {/* FEATURES SECTION (Scroll-driven 3D Orbit Carousel) */}

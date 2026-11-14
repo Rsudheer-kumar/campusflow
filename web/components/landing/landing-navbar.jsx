@@ -40,12 +40,12 @@ export function LandingNavbar() {
           <div className="h-8 w-8 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center transition-colors group-hover:bg-primary/30">
             <div className="h-3 w-3 bg-primary rounded-sm shadow-[0_0_10px_var(--primary)]"/>
           </div>
-          <span className="font-semibold text-lg tracking-tight text-foreground drop-shadow-sm">CampusFlow</span>
+          <span className={cn("font-semibold text-lg tracking-tight drop-shadow-sm transition-colors", scrolled ? "text-foreground" : "text-white")}>CampusFlow</span>
         </Link>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-8">
-          {NAV_LINKS.map((link) => (<Link key={link.href} href={link.href} className="text-sm font-medium text-muted hover:text-foreground transition-colors drop-shadow-sm">
+          {NAV_LINKS.map((link) => (<Link key={link.href} href={link.href} className={cn("text-sm font-medium transition-colors drop-shadow-sm", scrolled ? "text-muted hover:text-foreground" : "text-slate-200/90 hover:text-white")}>
               {link.label}
             </Link>))}
         </nav>
@@ -53,7 +53,7 @@ export function LandingNavbar() {
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-3">
           <ThemeToggle />
-          <Link href="/signin" className="text-sm font-medium text-muted hover:text-foreground transition-colors drop-shadow-sm">
+          <Link href="/signin" className={cn("text-sm font-medium transition-colors drop-shadow-sm", scrolled ? "text-muted hover:text-foreground" : "text-slate-200/90 hover:text-white")}>
             Sign In
           </Link>
           <Link href="/signin?tab=register">
@@ -67,7 +67,7 @@ export function LandingNavbar() {
         {/* Mobile Toggle */}
         <div className="flex items-center gap-2 md:hidden">
           <ThemeToggle />
-          <button className="text-muted hover:text-foreground p-1" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button className={cn("p-1 transition-colors", scrolled ? "text-muted hover:text-foreground" : "text-slate-200 hover:text-white")} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="h-6 w-6"/> : <Menu className="h-6 w-6"/>}
           </button>
         </div>
