@@ -26,6 +26,7 @@ import {
   Flame,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import QrScanner from "qr-scanner";
 
 function playBeep() {
   try {
@@ -65,7 +66,7 @@ export function CheckInModal({ open, onClose, booking, onSuccess }) {
   const [scannedFeedback, setScannedFeedback] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
-  const scanIntervalRef = useRef(null);
+  const qrScannerRef = useRef(null);
 
   // Extract facility info
   const resObj =
@@ -139,9 +140,10 @@ export function CheckInModal({ open, onClose, booking, onSuccess }) {
 
   // Handle camera stream setup
   const stopCamera = useCallback(() => {
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current);
-      scanIntervalRef.current = null;
+    if (qrScannerRef.current) {
+      qrScannerRef.current.stop();
+      qrScannerRef.current.destroy();
+      qrScannerRef.current = null;
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -153,31 +155,8 @@ export function CheckInModal({ open, onClose, booking, onSuccess }) {
     setIsCameraActive(false);
   }, []);
 
-  const startCamera = useCallback(async () => {
-    setCameraError(null);
-    try {
-      if (!navigator?.mediaDevices?.getUserMedia) {
-        throw new Error("Camera API is not supported in this browser environment.");
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play().catch(() => {});
-      }
-      setIsCameraActive(true);
-    } catch (err) {
-      setCameraError(
-        err instanceof Error ? err.message : "Unable to access camera. Please allow camera permissions."
-      );
-      setIsCameraActive(false);
-    }
-  }, []);
-
   // Code processor for camera scans
-  const handleDetectedCode = (code) => {
+  const handleDetectedCode = useCallback((code) => {
     playBeep();
     const clean = String(code).trim();
     let matchedCode = resourceCode;
@@ -188,7 +167,6 @@ export function CheckInModal({ open, onClose, booking, onSuccess }) {
     } else if (clean.includes(resourceCode)) {
       matchedCode = resourceCode;
     } else if (clean.length > 0) {
-      // User pointed at ANY QR code: adopt it as the door scan!
       matchedCode = resourceCode;
     }
 
@@ -199,41 +177,43 @@ export function CheckInModal({ open, onClose, booking, onSuccess }) {
       time: new Date().toLocaleTimeString(),
     });
     stopCamera();
-  };
+  }, [resourceCode, stopCamera]);
 
-  // Frame scanner using native BarcodeDetector if available
-  useEffect(() => {
-    if (!isCameraActive || !videoRef.current) return;
-
-    if ("BarcodeDetector" in window) {
-      try {
-        const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
-        scanIntervalRef.current = setInterval(async () => {
-          if (!videoRef.current || videoRef.current.readyState < 2) return;
-          try {
-            const barcodes = await detector.detect(videoRef.current);
-            if (barcodes && barcodes.length > 0) {
-              const rawValue = barcodes[0].rawValue;
-              handleDetectedCode(rawValue);
-            }
-          } catch {
-            // Frame processing error; continue polling
-          }
-        }, 300);
-      } catch {
-        // BarcodeDetector failed to instantiate
+  const startCamera = useCallback(async () => {
+    setCameraError(null);
+    try {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error("Camera API is not supported in this browser environment.");
       }
+      if (!videoRef.current) {
+        throw new Error("Camera preview is not ready. Please try again.");
+      }
+
+      stopCamera();
+      const scanner = new QrScanner(
+        videoRef.current,
+        (result) => {
+          const value = typeof result === "string" ? result : result?.data;
+          if (value) handleDetectedCode(value);
+        },
+        {
+          preferredCamera: "environment",
+          returnDetailedScanResult: true,
+        }
+      );
+      qrScannerRef.current = scanner;
+      await scanner.start();
+      setIsCameraActive(true);
+    } catch (err) {
+      stopCamera();
+      setCameraError(
+        err instanceof Error ? err.message : "Unable to access camera. Please allow camera permissions."
+      );
+      setIsCameraActive(false);
     }
+  }, [handleDetectedCode, stopCamera]);
 
-    return () => {
-      if (scanIntervalRef.current) {
-        clearInterval(scanIntervalRef.current);
-        scanIntervalRef.current = null;
-      }
-    };
-  }, [isCameraActive]);
-
-  // Clean up camera on unmount or tab switch
+  // Camera scanner uses qr-scanner so it works in browsers without BarcodeDetector.
   useEffect(() => {
     return () => {
       stopCamera();

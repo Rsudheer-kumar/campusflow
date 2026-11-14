@@ -261,7 +261,14 @@ export const api = {
             if (params.limit)
                 searchParams.set("limit", String(params.limit));
             const query = searchParams.toString();
-            return request(`/resources${query ? `?${query}` : ""}`);
+            const payload = await request(`/resources${query ? `?${query}` : ""}`);
+            const resources = Array.isArray(payload)
+                ? payload
+                : payload?.resources || payload?.data?.resources || [];
+            return {
+                ...(payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {}),
+                resources,
+            };
         },
         getById: async (id) => {
             return request(`/resources/${id}`);
