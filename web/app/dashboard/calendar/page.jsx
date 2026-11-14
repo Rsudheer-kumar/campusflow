@@ -62,8 +62,9 @@ function CalendarView() {
         return parsed;
       }
     }
-    return new Date();
+    return new Date(0);
   });
+  const [nowMs, setNowMs] = useState(0);
 
   // View Mode: "month" | "week" | "day"
   const [viewMode, setViewMode] = useState(() => {
@@ -133,6 +134,10 @@ function CalendarView() {
 
   useEffect(() => {
     initialResourceIdRef.current = searchParams.get("resourceId");
+    const qStart = searchParams.get("date") || searchParams.get("startAt");
+    const parsedDate = qStart ? new Date(qStart) : new Date();
+    setSelectedDate(!isNaN(parsedDate.getTime()) ? parsedDate : new Date());
+    setNowMs(Date.now());
     const queryStartAt = searchParams.get("startAt");
     const queryEndAt = searchParams.get("endAt");
     let initialSlot = null;
@@ -459,7 +464,7 @@ function CalendarView() {
   }, [allowedResources, selectedBlock, selectedCategory]);
 
   // Current timestamp snapshot
-  const now = new Date();
+  const now = new Date(nowMs);
   const todayStr = now.toISOString().slice(0, 10);
   const selectedDateStr = selectedDate.toISOString().slice(0, 10);
 

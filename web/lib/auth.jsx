@@ -3,8 +3,10 @@ import { createContext, useContext, useState, useEffect, useCallback, } from "re
 import { api, setStoredAccessToken, getStoredAccessToken, getStoredUser, setStoredUser } from "./api";
 const AuthContext = createContext(undefined);
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(() => getStoredUser());
-    const [isLoading, setIsLoading] = useState(() => !getStoredUser());
+    // Keep the first render identical on the server and client. Browser storage
+    // is restored in the mount effect below.
+    const [user, setUser] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Initialize session on mount
     useEffect(() => {
