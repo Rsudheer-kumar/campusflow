@@ -122,5 +122,10 @@ export const optionalAuthenticate = async (req, res, next) => {
   if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
     return next();
   }
-  return authenticate(req, res, next);
+  try {
+    return await authenticate(req, res, next);
+  } catch {
+    // If the token is expired, revoked or invalid, proceed gracefully as unauthenticated/public
+    return next();
+  }
 };

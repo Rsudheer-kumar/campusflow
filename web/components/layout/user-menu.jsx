@@ -10,8 +10,13 @@ import { Button } from "@/components/ui/button";
 export function UserMenu() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const menuRef = useRef(null);
   const { user, logout, switchRole, isLoading } = useAuth();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close on click outside (unconditionally at top level)
   useEffect(() => {
@@ -36,7 +41,7 @@ export function UserMenu() {
   }, [isOpen]);
 
   // Conditional returns AFTER all hooks have executed
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return <div className="h-9 w-9 rounded-full bg-surface-2 animate-pulse" />;
   }
 

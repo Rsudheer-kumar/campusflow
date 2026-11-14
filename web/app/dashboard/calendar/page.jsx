@@ -62,9 +62,9 @@ function CalendarView() {
         return parsed;
       }
     }
-    return new Date(0);
+    return new Date("2026-11-14T00:00:00.000Z");
   });
-  const [nowMs, setNowMs] = useState(0);
+  const [nowMs, setNowMs] = useState(() => new Date("2026-11-14T00:00:00.000Z").getTime());
 
   // View Mode: "month" | "week" | "day"
   const [viewMode, setViewMode] = useState(() => {

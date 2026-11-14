@@ -1,20 +1,25 @@
 "use client";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 
 export function AuthGuard({ children }) {
   const { user, isLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !isLoading && !user) {
       router.replace(`/signin?redirect=${encodeURIComponent(pathname || "/dashboard")}`);
     }
-  }, [user, isLoading, router, pathname]);
+  }, [mounted, user, isLoading, router, pathname]);
 
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return (
       <div className="min-h-screen bg-[#050816] text-[#F8FAFC] flex flex-col items-center justify-center selection:bg-[#4F8CFF]/30">
         <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />

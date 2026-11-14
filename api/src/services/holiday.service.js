@@ -206,11 +206,11 @@ export class HolidayService {
       isUniversityClosed: Boolean(isUniversityClosed),
       reason: reason.trim(),
       status: HolidayStatus.PUBLISHED,
-      createdBy: adminUser?._id || null,
+      createdBy: adminUser?._id || adminUser?.id || null,
       auditTrail: [
         {
           action: 'CREATED',
-          performedBy: adminUser?._id || null,
+          performedBy: adminUser?._id || adminUser?.id || null,
           notes: `Declared by ${adminUser?.name || 'Administrator'}: ${reason.trim()}`,
         },
       ],
@@ -287,7 +287,7 @@ export class HolidayService {
     holiday.status = HolidayStatus.REVOKED;
     holiday.auditTrail.push({
       action: 'REVOKED',
-      performedBy: adminUser?._id || null,
+      performedBy: adminUser?._id || adminUser?.id || null,
       notes: revocationReason || `Revoked by ${adminUser?.name || 'Administrator'}`,
     });
 

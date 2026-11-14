@@ -32,21 +32,7 @@ export class ResourceController {
 
       const query = {};
 
-      // Restrict HOD and Faculty rooms from students
-      if (isStudentOnly) {
-        query.$and = [
-          { roomCategory: { $nin: ['HOD_ROOM', 'FACULTY_ROOM'] } },
-          { code: { $not: /^(HOD|FAC)-/i } },
-          {
-            $or: [
-              { allowedRoles: { $exists: false } },
-              { allowedRoles: { $size: 0 } },
-              { allowedRoles: { $in: ['STUDENT'] } },
-            ],
-          },
-        ];
-      }
-
+      // Restrict HOD and Faculty rooms from students safely after fetch
       if (status) {
         query.status = status;
       }
@@ -60,21 +46,16 @@ export class ResourceController {
       }
 
       if (search) {
-        query.$and = [
-          ...(query.$and || []),
-          {
-            $or: [
+        query.$or = [
           { name: { $regex: search, $options: 'i' } },
           { code: { $regex: search, $options: 'i' } },
           { 'location.building': { $regex: search, $options: 'i' } },
-            ],
-          },
         ];
       }
 
       const skip = (page - 1) * limit;
 
-      const [resources, total] = await Promise.all([
+      let [resources, total] = await Promise.all([
         Resource.find(query)
           .populate('resourceType', 'name code category')
           .sort({ name: 1 })
@@ -83,6 +64,16 @@ export class ResourceController {
           .lean(),
         Resource.countDocuments(query),
       ]);
+
+      if (isStudentOnly) {
+        resources = resources.filter((r) => {
+          if (r.roomCategory === 'HOD_ROOM' || r.roomCategory === 'FACULTY_ROOM') return false;
+          if (r.code && /^(HOD|FAC)-/i.test(r.code)) return false;
+          if (Array.isArray(r.allowedRoles) && r.allowedRoles.length > 0 && !r.allowedRoles.includes('STUDENT')) return false;
+          return true;
+        });
+        total = resources.length;
+      }
 
       const payload = {
         resources,
