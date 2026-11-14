@@ -112,14 +112,15 @@ async function executeTokenRefresh() {
 
 async function request(endpoint, options = {}, isRetry = false) {
     const url = endpoint.startsWith("http") ? endpoint : `${BASE_URL}${endpoint}`;
-    const headers = new Headers(options.headers || {});
-    if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
+    const { skipAuth = false, ...requestOptions } = options;
+    const headers = new Headers(requestOptions.headers || {});
+    if (!headers.has("Content-Type") && !(requestOptions.body instanceof FormData)) {
         headers.set("Content-Type", "application/json");
     }
 
-    let token = getStoredAccessToken();
+    let token = skipAuth ? null : getStoredAccessToken();
     // If attempting an authenticated endpoint before token initialization in browser, try silent refresh first
-    if (!token && !endpoint.includes("/auth/") && typeof window !== "undefined" && !isRetry) {
+    if (!skipAuth && !token && !endpoint.includes("/auth/") && typeof window !== "undefined" && !isRetry) {
         const refreshData = await executeTokenRefresh();
         if (refreshData?.accessToken) {
             token = refreshData.accessToken;
@@ -130,7 +131,7 @@ async function request(endpoint, options = {}, isRetry = false) {
         headers.set("Authorization", `Bearer ${token}`);
     }
     const fetchOptions = {
-        ...options,
+        ...requestOptions,
         headers,
         credentials: "include", // Transmit cf_refresh cookie
     };
@@ -261,7 +262,9 @@ export const api = {
             if (params.limit)
                 searchParams.set("limit", String(params.limit));
             const query = searchParams.toString();
-            const payload = await request(`/resources${query ? `?${query}` : ""}`);
+            // Catalogue discovery is an optional-auth endpoint. Avoid attaching
+            // stale access tokens so students can still see public facilities.
+            const payload = await request(`/resources${query ? `?${query}` : ""}`, { skipAuth: true });
             const resources = Array.isArray(payload)
                 ? payload
                 : payload?.resources || payload?.data?.resources || [];
