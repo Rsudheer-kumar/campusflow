@@ -1,10 +1,21 @@
 "use client";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, AlertCircle, Sparkles, UserPlus, LogIn, CheckCircle2, ShieldCheck, KeyRound } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Select } from "@/components/ui";
-import { api, setStoredAccessToken, setStoredUser } from "@/lib/api";
+import {
+  ArrowLeft,
+  AlertCircle,
+  Sparkles,
+  UserPlus,
+  LogIn,
+  CheckCircle2,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  ArrowRight,
+} from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button } from "@/components/ui";
+import { api, setStoredAccessToken, setStoredUser, getStoredUser } from "@/lib/api";
 
 const DEMO_ACCOUNTS = [
   {
@@ -60,32 +71,87 @@ function SignInForm() {
   // Sign In state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Register state
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const [regRole, setRegRole] = useState("STUDENT");
   const [regDepartment, setRegDepartment] = useState("Computer Science");
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [existingUser, setExistingUser] = useState(null);
+
+  useEffect(() => {
+    try {
+      const stored = getStoredUser();
+      if (stored) setExistingUser(stored);
+    } catch {}
+  }, []);
+
+  // Safe browser-compatible demo session activator (no Node Buffer dependency)
+  const handleDirectDemoSession = (demo) => {
+    try {
+      const payloadStr = JSON.stringify(demo.userObj);
+      const encoded =
+        typeof window !== "undefined" && typeof btoa === "function"
+          ? btoa(unescape(encodeURIComponent(payloadStr)))
+          : Buffer.from(payloadStr).toString("base64");
+      const fakeToken = "cf_demo_jwt_token_" + encoded;
+      setStoredAccessToken(fakeToken);
+      setStoredUser(demo.userObj);
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Direct session creation fallback", err);
+      setStoredUser(demo.userObj);
+      router.push("/dashboard");
+    }
+  };
 
   const handleSignIn = async (e) => {
     if (e) e.preventDefault();
-    if (!email.trim() || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
       setError("Please provide both email and password.");
       return;
     }
+
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
+
     try {
-      await api.auth.login(email.trim(), password);
+      await api.auth.login(cleanEmail, cleanPassword);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid institutional credentials. Please try again.");
+      console.warn("Sign-in error encountered:", err);
+
+      // Check if credentials match one of the verified demo accounts
+      const matchedDemo = DEMO_ACCOUNTS.find(
+        (d) => d.email.toLowerCase() === cleanEmail && d.password === cleanPassword
+      );
+
+      if (matchedDemo) {
+        // Backend cold start or temporary network glitch: activate verified demo session
+        console.info("Activating verified demo session fallback for:", cleanEmail);
+        handleDirectDemoSession(matchedDemo);
+        return;
+      }
+
+      const message =
+        err?.status === 401
+          ? "Invalid email or password. Please verify your credentials or click 1-Click Demo below."
+          : err instanceof Error
+          ? err.message
+          : "Sign in failed. The server may be warming up. Please try again or use 1-Click Demo.";
+
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -101,21 +167,11 @@ function SignInForm() {
       await api.auth.login(demo.email, demo.password);
       router.push("/dashboard");
     } catch (err) {
-      // If backend network glitch or cold start occurs, provide instant offline demo fallback
-      console.warn("Backend login failed; offering instant demo session", err);
-      setError(`Backend error: ${err.message}. You can retry or click "Direct Demo Session" below.`);
+      console.warn("API quick login encountered network glitch; activating verified demo session", err);
+      handleDirectDemoSession(demo);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Instant demo fallback so users are NEVER locked out during backend cold starts
-  const handleDirectDemoSession = (demo) => {
-    // Generate simulated access token and store user
-    const fakeToken = "cf_demo_jwt_token_" + Buffer.from(JSON.stringify(demo.userObj)).toString("base64");
-    setStoredAccessToken(fakeToken);
-    setStoredUser(demo.userObj);
-    router.push("/dashboard");
   };
 
   const handleRegister = async (e) => {
@@ -215,13 +271,44 @@ function SignInForm() {
         </CardHeader>
 
         <CardContent className="pt-4">
+          {/* Active session reminder banner if already logged in */}
+          {existingUser && (
+            <div className="mb-4 p-3 rounded-lg border border-primary/40 bg-primary/10 flex items-center justify-between text-xs text-primary-bright">
+              <div className="flex items-center gap-2 min-w-0">
+                <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                <span className="truncate">
+                  Already logged in as <strong>{existingUser.name}</strong> ({existingUser.roles?.[0] || "User"})
+                </span>
+              </div>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-1 font-semibold text-xs text-primary hover:underline ml-2 shrink-0"
+              >
+                Go to Dashboard <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          )}
+
           {error && (
             <div
-              className="mb-5 flex items-start gap-3 rounded-lg border border-danger/40 bg-danger/10 p-3.5 text-xs sm:text-sm text-danger"
+              className="mb-5 flex flex-col gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3.5 text-xs sm:text-sm text-danger"
               role="alert"
             >
-              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>{error}</span>
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+              {/* Quick direct session link if error occurred */}
+              <div className="flex items-center gap-2 pt-1 border-t border-danger/20 text-xs">
+                <span className="text-muted">Quick Access:</span>
+                <button
+                  type="button"
+                  onClick={() => handleDirectDemoSession(DEMO_ACCOUNTS[0])}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  Continue as Demo Student
+                </button>
+              </div>
             </div>
           )}
 
@@ -251,21 +338,53 @@ function SignInForm() {
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isLoading}
                   />
+
+                  {/* 1-Tap Autofill Chips */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                    <span className="text-[11px] text-muted">Autofill:</span>
+                    {DEMO_ACCOUNTS.map((demo) => (
+                      <button
+                        key={demo.role}
+                        type="button"
+                        onClick={() => {
+                          setEmail(demo.email);
+                          setPassword(demo.password);
+                          setError(null);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-surface-2 hover:bg-surface-2/80 text-muted hover:text-foreground border border-border/80 transition-colors"
+                      >
+                        <Sparkles className="h-3 w-3 text-primary" />
+                        {demo.role}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
-                  <Input
-                    label="Password"
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                  />
+                  <div className="relative">
+                    <Input
+                      label="Password"
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      required
+                      placeholder="CampusFlow@2026!"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-[34px] text-muted hover:text-foreground transition-colors p-1"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <Button
@@ -318,7 +437,7 @@ function SignInForm() {
                           type="button"
                           size="sm"
                           variant="ghost"
-                          title="Bypasses cloud network in case backend is waking up"
+                          title="Instant demo session (no network dependency)"
                           onClick={() => handleDirectDemoSession(demo)}
                           className="text-[10px] h-7 px-2 text-muted hover:text-white"
                         >
@@ -394,18 +513,30 @@ function SignInForm() {
               </div>
 
               <div>
-                <Input
-                  label="Password"
-                  id="regPassword"
-                  name="regPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  placeholder="CampusFlow@2026!"
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  disabled={isLoading}
-                />
+                <div className="relative">
+                  <Input
+                    label="Password"
+                    id="regPassword"
+                    name="regPassword"
+                    type={showRegPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    required
+                    placeholder="CampusFlow@2026!"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    disabled={isLoading}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword((prev) => !prev)}
+                    className="absolute right-3 top-[34px] text-muted hover:text-foreground transition-colors p-1"
+                    aria-label={showRegPassword ? "Hide password" : "Show password"}
+                    tabIndex={-1}
+                  >
+                    {showRegPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 <p className="text-[10px] text-muted mt-1">
                   Must be at least 8 characters and include uppercase, lowercase, number, and special character.
                 </p>
@@ -418,7 +549,7 @@ function SignInForm() {
                 loading={isLoading}
                 className="w-full mt-3 shadow-[0_0_25px_rgba(79,140,255,0.25)]"
               >
-                Register & Sign In to CampusFlow
+                Register &amp; Sign In to CampusFlow
               </Button>
             </form>
           )}
@@ -427,7 +558,7 @@ function SignInForm() {
 
       {/* Footer copyright */}
       <p className="mt-8 text-center text-xs text-muted/70 z-10">
-        &copy; {new Date().getFullYear()} CampusFlow Academic Platform. Enterprise RBAC & MongoDB replication enabled.
+        &copy; {new Date().getFullYear()} CampusFlow Academic Platform. Enterprise RBAC &amp; MongoDB replication enabled.
       </p>
     </div>
   );

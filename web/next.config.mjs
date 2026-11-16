@@ -7,15 +7,17 @@ const isProduction = process.env.NODE_ENV === "production";
 const internalApiUrl = process.env.INTERNAL_API_URL?.trim();
 const proxySecret = process.env.PROXY_SECRET?.trim();
 
-let backendOrigin = "http://localhost:5000";
+const defaultBackend = isProduction
+  ? "https://campusflow-4rzn.onrender.com"
+  : "http://localhost:5000";
 
-if (internalApiUrl) {
+let backendOrigin = defaultBackend;
+
+if (internalApiUrl && /^https?:\/\//i.test(internalApiUrl)) {
   // Normalize by stripping trailing /api and trailing slashes to prevent duplicate /api/api
   backendOrigin = internalApiUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
-} else if (process.env.NEXT_PUBLIC_API_URL) {
+} else if (process.env.NEXT_PUBLIC_API_URL && /^https?:\/\//i.test(process.env.NEXT_PUBLIC_API_URL)) {
   backendOrigin = process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "").replace(/\/+$/, "");
-} else if (isProduction) {
-  backendOrigin = "https://campusflow-4rzn.onrender.com";
 }
 
 if (isProduction && (!proxySecret || proxySecret.length < 32)) {

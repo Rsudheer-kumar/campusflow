@@ -146,8 +146,8 @@ async function request(endpoint, options = {}, isRetry = false) {
         }
         throw new ApiError("Unable to connect to CampusFlow server. Please check your network or server status.", "NETWORK_ERROR", 0);
     }
-    if ((res.status === 502 || res.status === 503 || res.status === 504) && !isRetry) {
-        await new Promise((resolve) => setTimeout(resolve, 1200));
+    if ((res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) && !isRetry) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         return request(endpoint, options, true);
     }
     // Handle 401 Unauthorized transparent token refresh
