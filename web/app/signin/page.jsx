@@ -338,26 +338,6 @@ function SignInForm() {
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isLoading}
                   />
-
-                  {/* 1-Tap Autofill Chips */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
-                    <span className="text-[11px] text-muted">Autofill:</span>
-                    {DEMO_ACCOUNTS.map((demo) => (
-                      <button
-                        key={demo.role}
-                        type="button"
-                        onClick={() => {
-                          setEmail(demo.email);
-                          setPassword(demo.password);
-                          setError(null);
-                        }}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-surface-2 hover:bg-surface-2/80 text-muted hover:text-foreground border border-border/80 transition-colors"
-                      >
-                        <Sparkles className="h-3 w-3 text-primary" />
-                        {demo.role}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 <div>
@@ -396,6 +376,26 @@ function SignInForm() {
                 >
                   Sign In to CampusFlow
                 </Button>
+
+                {/* 1-Tap Autofill Chips placed below Sign In button */}
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                  <span className="text-xs text-muted font-medium">Autofill:</span>
+                  {DEMO_ACCOUNTS.map((demo) => (
+                    <button
+                      key={demo.role}
+                      type="button"
+                      onClick={() => {
+                        setEmail(demo.email);
+                        setPassword(demo.password);
+                        setError(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-surface-2/90 hover:bg-surface-2 text-muted hover:text-foreground border border-border/80 transition-colors cursor-pointer"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                      {demo.role}
+                    </button>
+                  ))}
+                </div>
               </form>
 
               {/* Verified Quick Demo Credentials Section */}
