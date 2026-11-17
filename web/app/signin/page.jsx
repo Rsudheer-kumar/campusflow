@@ -146,29 +146,12 @@ function SignInForm() {
 
       const message =
         err?.status === 401
-          ? "Invalid email or password. Please verify your credentials or click 1-Click Demo below."
+          ? "Invalid email or password. Please verify your credentials or select a Demo Account below."
           : err instanceof Error
           ? err.message
-          : "Sign in failed. The server may be warming up. Please try again or use 1-Click Demo.";
+          : "Sign in failed. The server may be warming up. Please try again or select a Demo Account.";
 
       setError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleQuickLogin = async (demo) => {
-    setEmail(demo.email);
-    setPassword(demo.password);
-    setError(null);
-    setSuccessMessage(null);
-    setIsLoading(true);
-    try {
-      await api.auth.login(demo.email, demo.password);
-      router.push("/dashboard");
-    } catch (err) {
-      console.warn("API quick login encountered network glitch; activating verified demo session", err);
-      handleDirectDemoSession(demo);
     } finally {
       setIsLoading(false);
     }
@@ -377,13 +360,14 @@ function SignInForm() {
                   Sign In to CampusFlow
                 </Button>
 
-                {/* 1-Tap Autofill Chips placed below Sign In button */}
+                {/* 1-Tap Demo Account Chips placed below Sign In button */}
                 <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                  <span className="text-xs text-muted font-medium">Autofill:</span>
+                  <span className="text-xs text-muted font-medium">Demo Account:</span>
                   {DEMO_ACCOUNTS.map((demo) => (
                     <button
                       key={demo.role}
                       type="button"
+                      title={`Fill ${demo.role} credentials`}
                       onClick={() => {
                         setEmail(demo.email);
                         setPassword(demo.password);
@@ -397,57 +381,6 @@ function SignInForm() {
                   ))}
                 </div>
               </form>
-
-              {/* Verified Quick Demo Credentials Section */}
-              <div className="mt-8 pt-6 border-t border-border/70 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
-                    1-Click Verified Demo Accounts:
-                  </span>
-                  <span className="text-[10px] text-muted">Password: CampusFlow@2026!</span>
-                </div>
-
-                <div className="space-y-2">
-                  {DEMO_ACCOUNTS.map((demo) => (
-                    <div
-                      key={demo.role}
-                      className="p-2.5 rounded-lg border border-border/80 bg-surface-2/60 hover:bg-surface-2 transition-all flex items-center justify-between gap-3 text-xs"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-white">{demo.role}</span>
-                          <span className="text-[11px] text-muted truncate">({demo.email})</span>
-                        </div>
-                        <p className="text-[10px] text-muted mt-0.5">{demo.desc}</p>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleQuickLogin(demo)}
-                          disabled={isLoading}
-                          className="text-[11px] h-7 px-2.5"
-                        >
-                          Sign In
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          title="Instant demo session (no network dependency)"
-                          onClick={() => handleDirectDemoSession(demo)}
-                          className="text-[10px] h-7 px-2 text-muted hover:text-white"
-                        >
-                          Offline
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           ) : (
             <form onSubmit={handleRegister} className="space-y-4">
