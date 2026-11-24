@@ -15,7 +15,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button } from "@/components/ui";
-import { api, setStoredAccessToken, setStoredUser, getStoredUser } from "@/lib/api";
+import { api, setStoredAccessToken, setStoredUser, getStoredUser, prewarmBackend } from "@/lib/api";
 
 const DEMO_ACCOUNTS = [
   {
@@ -91,6 +91,8 @@ function SignInForm() {
       const stored = getStoredUser();
       if (stored) setExistingUser(stored);
     } catch {}
+    // Eagerly prewarm backend on signin page mount to minimize cold start wait
+    prewarmBackend();
   }, []);
 
   // Safe browser-compatible demo session activator (no Node Buffer dependency)
@@ -126,27 +128,47 @@ function SignInForm() {
     setError(null);
     setSuccessMessage(null);
 
+    // Check if credentials match one of the verified demo accounts
+    const matchedDemo = DEMO_ACCOUNTS.find(
+      (d) => d.email.toLowerCase() === cleanEmail && d.password === cleanPassword
+    );
+
+    // Fast-path for verified demo accounts:
+    // If backend is asleep (Render cold start), do not stall the user for 45s.
+    // Try the API for up to 3s; if asleep or erroring, immediately activate the demo session!
+    if (matchedDemo) {
+      try {
+        const loginPromise = api.auth.login(cleanEmail, cleanPassword);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("COLD_START_TIMEOUT")), 3000)
+        );
+
+        await Promise.race([loginPromise, timeoutPromise]);
+        router.push("/dashboard");
+        return;
+      } catch (err) {
+        console.warn("Backend sleeping or cold start during demo sign-in; activating instant session:", err);
+        handleDirectDemoSession(matchedDemo);
+        return;
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    // Standard login for registered custom users
     try {
       await api.auth.login(cleanEmail, cleanPassword);
       router.push("/dashboard");
     } catch (err) {
       console.warn("Sign-in error encountered:", err);
-
-      // Check if credentials match one of the verified demo accounts
-      const matchedDemo = DEMO_ACCOUNTS.find(
-        (d) => d.email.toLowerCase() === cleanEmail && d.password === cleanPassword
-      );
-
-      if (matchedDemo) {
-        // Backend cold start or temporary network glitch: activate verified demo session
-        console.info("Activating verified demo session fallback for:", cleanEmail);
-        handleDirectDemoSession(matchedDemo);
-        return;
-      }
+      const isColdStart =
+        err?.status === 500 || err?.status === 502 || err?.status === 503 || err?.status === 504 || err?.status === 0;
 
       const message =
         err?.status === 401
           ? "Invalid email or password. Please verify your credentials or select a Demo Account below."
+          : isColdStart
+          ? "Server is warming up from sleep mode (Render cloud cold start). Please wait a few seconds and try again, or select a Demo Account for instant access."
           : err instanceof Error
           ? err.message
           : "Sign in failed. The server may be warming up. Please try again or select a Demo Account.";

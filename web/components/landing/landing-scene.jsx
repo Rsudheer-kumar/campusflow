@@ -50,26 +50,13 @@ export function LandingScene() {
     };
   }, []);
 
-  // Intercept wheel event: only zoom if Ctrl/Cmd is held, otherwise allow native page scroll
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const handleWheel = (e) => {
-      if (controlsRef.current) {
-        controlsRef.current.enableZoom = Boolean(e.ctrlKey || e.metaKey);
-      }
-    };
-    container.addEventListener("wheel", handleWheel, { capture: true, passive: true });
-    return () => container.removeEventListener("wheel", handleWheel, { capture: true });
-  }, []);
-
   const shouldRender = isInView && !prefersReducedMotion && !isScrolling;
 
   return (
     <div ref={containerRef} className="w-full h-full relative group bg-[#070C18]">
       {/* Desktop Interaction Hint */}
       <div className="absolute bottom-32 right-6 md:bottom-8 md:right-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none hidden sm:flex items-center gap-2 bg-[#0B1224]/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#1E2A44] text-[#94A3B8] text-[11px] font-medium tracking-wide shadow-lg">
-        Drag to orbit &bull; Ctrl + scroll to zoom
+        Drag to orbit &bull; 3D Interactive Campus
       </div>
 
       <WebGLErrorBoundary
@@ -86,7 +73,7 @@ export function LandingScene() {
         >
           {isMounted && (
             <Canvas
-              shadows="percentage"
+              shadows="basic"
               dpr={[1, 1.25]}
               gl={{
                 powerPreference: "high-performance",
@@ -125,7 +112,7 @@ export function LandingScene() {
                   maxDistance={45}
                   maxPolarAngle={Math.PI / 2.2}
                   enablePan={false}
-                  enableZoom={true}
+                  enableZoom={false}
                   autoRotate={shouldRender}
                   autoRotateSpeed={0.5}
                   target={[0, 0, 0]}

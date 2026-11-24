@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Box, Shield, Zap, Sparkles, Building2, Calendar, Users, Map, CheckCircle2 } from "lucide-react";
@@ -6,6 +7,7 @@ import { LandingNavbar } from "@/components/landing/landing-navbar";
 import { LandingScene } from "@/components/landing/landing-scene";
 import { ResourceCardsGrid } from "@/components/landing/resource-cards-grid";
 import { Button, Text3DFlip, ShinyButton } from "@/components/ui";
+import { prewarmBackend } from "@/lib/api";
 // Fade up settings
 const fadeUp = {
     hidden: { opacity: 0, y: 30 },
@@ -77,6 +79,11 @@ const RESOURCE_FEATURES = [
 ];
 
 export default function LandingPage() {
+    useEffect(() => {
+        // Proactively wake up backend in background while user views landing page
+        prewarmBackend();
+    }, []);
+
     return (<div className="min-h-screen bg-background text-foreground selection:bg-primary/30 overflow-x-hidden transition-colors duration-200">
       <LandingNavbar />
 

@@ -68,6 +68,21 @@ export function setStoredUser(user) {
 // ─── HTTP Core Transport ───────────────────────────────────────────────────────
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
+let prewarmPromise = null;
+
+/**
+ * Sends a lightweight, non-blocking health check ping to wake up the backend.
+ * Crucial for cloud platforms like Render where free instances spin down after inactivity.
+ */
+export function prewarmBackend() {
+    if (typeof window === "undefined") return Promise.resolve(false);
+    if (prewarmPromise) return prewarmPromise;
+    prewarmPromise = fetch(`${BASE_URL}/health`, { method: "GET", cache: "no-store" })
+        .then((res) => res.ok)
+        .catch(() => false);
+    return prewarmPromise;
+}
+
 let lastRefreshStatus = null;
 let activeRefreshPromise = null;
 
@@ -110,7 +125,7 @@ async function executeTokenRefresh() {
     return activeRefreshPromise;
 }
 
-async function request(endpoint, options = {}, isRetry = false) {
+async function request(endpoint, options = {}, retryCount = 0) {
     const url = endpoint.startsWith("http") ? endpoint : `${BASE_URL}${endpoint}`;
     const { skipAuth = false, ...requestOptions } = options;
     const headers = new Headers(requestOptions.headers || {});
@@ -120,7 +135,7 @@ async function request(endpoint, options = {}, isRetry = false) {
 
     let token = skipAuth ? null : getStoredAccessToken();
     // If attempting an authenticated endpoint before token initialization in browser, try silent refresh first
-    if (!skipAuth && !token && !endpoint.includes("/auth/") && typeof window !== "undefined" && !isRetry) {
+    if (!skipAuth && !token && !endpoint.includes("/auth/") && typeof window !== "undefined" && retryCount === 0) {
         const refreshData = await executeTokenRefresh();
         if (refreshData?.accessToken) {
             token = refreshData.accessToken;
@@ -140,21 +155,22 @@ async function request(endpoint, options = {}, isRetry = false) {
         res = await fetch(url, fetchOptions);
     }
     catch (netErr) {
-        if (!isRetry) {
-            await new Promise((resolve) => setTimeout(resolve, 1200));
-            return request(endpoint, options, true);
+        if (retryCount < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 1500 * (retryCount + 1)));
+            return request(endpoint, options, retryCount + 1);
         }
         throw new ApiError("Unable to connect to CampusFlow server. Please check your network or server status.", "NETWORK_ERROR", 0);
     }
-    if ((res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) && !isRetry) {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        return request(endpoint, options, true);
+    // Handle cloud server cold starts (Render spin-up 500, 502 Bad Gateway, 503, 504 Gateway Timeout)
+    if ((res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) && retryCount < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 1500 * (retryCount + 1)));
+        return request(endpoint, options, retryCount + 1);
     }
     // Handle 401 Unauthorized transparent token refresh
-    if (res.status === 401 && !isRetry && !endpoint.includes("/auth/")) {
+    if (res.status === 401 && retryCount === 0 && !endpoint.includes("/auth/")) {
         const refreshData = await executeTokenRefresh();
         if (refreshData?.accessToken) {
-            return request(endpoint, options, true);
+            return request(endpoint, options, 1);
         }
     }
     let body;
@@ -167,7 +183,11 @@ async function request(endpoint, options = {}, isRetry = false) {
     if (!res.ok) {
         const errorBody = body;
         const errorCode = errorBody?.error?.code || `HTTP_${res.status}`;
-        const errorMessage = errorBody?.error?.message || res.statusText || "An unexpected error occurred";
+        let errorMessage = errorBody?.error?.message || res.statusText;
+        if (!errorMessage && (res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504)) {
+            errorMessage = "CampusFlow server is warming up from sleep mode. Please try again in a few seconds.";
+        }
+        errorMessage = errorMessage || "An unexpected error occurred";
         const details = errorBody?.error?.details;
         throw new ApiError(errorMessage, errorCode, res.status, details);
     }
@@ -732,5 +752,12 @@ export const api = {
                 body: JSON.stringify(payload),
             });
         },
+    },
+    // Health & System Readiness
+    health: {
+        check: async () => {
+            return request("/health", { skipAuth: true });
+        },
+        ping: prewarmBackend,
     },
 };
