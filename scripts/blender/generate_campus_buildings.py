@@ -705,6 +705,33 @@ def main():
     build_ccc()
     results.append(export_building("CCC", output_dir, blend_dir))
 
+    # 5. Full Unified Campus (All 4 buildings, roads, trees, lights in one file)
+    try:
+        try:
+            curr_dir = os.path.dirname(os.path.abspath(__file__))
+        except Exception:
+            curr_dir = os.path.join(root_dir, "scripts", "blender")
+        if curr_dir not in sys.path:
+            sys.path.insert(0, curr_dir)
+        from generate_full_campus import build_full_campus
+        print("\n═══════════════════════════════════════════════════════════")
+        print("GENERATING FULL UNIFIED CAMPUS SCENE (ALL BUILDINGS + ROADS + TREES)")
+        print("═══════════════════════════════════════════════════════════")
+        full_res = build_full_campus(output_dir, blend_dir)
+        results.append({
+            "code": "FULL_CAMPUS",
+            "glb": full_res["glb"],
+            "blend": full_res["blend"],
+            "size_kb": full_res["glb_size_kb"],
+            "objects": full_res["objects"],
+            "vertices": full_res["vertices"],
+            "polygons": full_res["polygons"],
+            "triangles": full_res["triangles"],
+            "duration": full_res["duration"]
+        })
+    except Exception as e:
+        print(f"Notice: Unified campus generator skipped or encountered: {e}")
+
     print("\n═══════════════════════════════════════════════════════════")
     print("ALL 4 CAMPUS BUILDINGS GENERATED & EXPORTED SUCCESSFULLY")
     print("═══════════════════════════════════════════════════════════")
