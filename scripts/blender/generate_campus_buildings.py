@@ -20,16 +20,31 @@ import sys
 import time
 
 def clear_scene():
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    # Ensure all existing objects/meshes/materials are purged
-    for collection in bpy.data.collections:
-        bpy.data.collections.remove(collection)
-    for obj in bpy.data.objects:
-        bpy.data.objects.remove(obj)
-    for mesh in bpy.data.meshes:
-        bpy.data.meshes.remove(mesh)
-    for mat in bpy.data.materials:
-        bpy.data.materials.remove(mat)
+    # If in edit mode, switch to OBJECT mode
+    if hasattr(bpy.context, "mode") and bpy.context.mode != "OBJECT":
+        try:
+            bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            pass
+
+    # Ensure active scene
+    scene = bpy.context.scene if hasattr(bpy.context, "scene") and bpy.context.scene else (bpy.data.scenes[0] if bpy.data.scenes else bpy.data.scenes.new("Scene"))
+
+    # Unlink and delete all objects
+    for obj in list(bpy.data.objects):
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+    # Remove all collections
+    for collection in list(bpy.data.collections):
+        bpy.data.collections.remove(collection, do_unlink=True)
+
+    # Purge orphaned meshes, materials, and curves
+    for mesh in list(bpy.data.meshes):
+        bpy.data.meshes.remove(mesh, do_unlink=True)
+    for mat in list(bpy.data.materials):
+        bpy.data.materials.remove(mat, do_unlink=True)
+    for curve in list(bpy.data.curves):
+        bpy.data.curves.remove(curve, do_unlink=True)
 
 def srgb_to_linear(c):
     return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
@@ -44,7 +59,11 @@ def hex_to_linear_rgb(hex_code, alpha=1.0):
 def create_pbr_material(name, hex_color, roughness=0.5, metallic=0.0, alpha=1.0,
                         emission_hex=None, emission_strength=0.0):
     mat = bpy.data.materials.new(name=name)
-    mat.use_nodes = True
+    if hasattr(mat, "use_nodes"):
+        try:
+            mat.use_nodes = True
+        except Exception:
+            pass
     nodes = mat.node_tree.nodes
     bsdf = nodes.get("Principled BSDF")
     if not bsdf:
@@ -78,17 +97,44 @@ def create_pbr_material(name, hex_color, roughness=0.5, metallic=0.0, alpha=1.0,
 
     return mat
 
+def get_active_object():
+    """Safely retrieves the active object across all Blender versions and GUI/headless contexts."""
+    try:
+        if hasattr(bpy.context, "view_layer") and hasattr(bpy.context.view_layer.objects, "active"):
+            if bpy.context.view_layer.objects.active:
+                return bpy.context.view_layer.objects.active
+    except Exception:
+        pass
+    try:
+        if hasattr(bpy.context, "active_object") and bpy.context.active_object:
+            return bpy.context.active_object
+    except Exception:
+        pass
+    try:
+        if hasattr(bpy.context, "selected_objects") and bpy.context.selected_objects:
+            return bpy.context.selected_objects[0]
+    except Exception:
+        pass
+    return None
+
 def add_box(name, size, location, material=None):
     """
     Creates a box centered at location with dimensions size (w, d, h) in Blender coords (X, Y, Z).
     """
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=location)
-    obj = bpy.context.active_object
-    obj.name = name
-    obj.scale = (size[0], size[1], size[2])
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    if material:
-        obj.data.materials.append(material)
+    obj = get_active_object()
+    if obj:
+        obj.name = name
+        obj.scale = (size[0], size[1], size[2])
+        if hasattr(bpy.context, "view_layer"):
+            bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        try:
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        except Exception:
+            pass
+        if material:
+            obj.data.materials.append(material)
     return obj
 
 def add_cylinder(name, radius, height, location, rotation=(0,0,0), vertices=32, material=None):
@@ -102,11 +148,18 @@ def add_cylinder(name, radius, height, location, rotation=(0,0,0), vertices=32, 
         location=location,
         rotation=rotation
     )
-    obj = bpy.context.active_object
-    obj.name = name
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    if material:
-        obj.data.materials.append(material)
+    obj = get_active_object()
+    if obj:
+        obj.name = name
+        if hasattr(bpy.context, "view_layer"):
+            bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        try:
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        except Exception:
+            pass
+        if material:
+            obj.data.materials.append(material)
     return obj
 
 def add_sphere(name, radius, location, segments=24, ring_count=16, material=None):
@@ -116,11 +169,18 @@ def add_sphere(name, radius, location, segments=24, ring_count=16, material=None
         radius=radius,
         location=location
     )
-    obj = bpy.context.active_object
-    obj.name = name
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    if material:
-        obj.data.materials.append(material)
+    obj = get_active_object()
+    if obj:
+        obj.name = name
+        if hasattr(bpy.context, "view_layer"):
+            bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        try:
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        except Exception:
+            pass
+        if material:
+            obj.data.materials.append(material)
     return obj
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -128,8 +188,14 @@ def add_sphere(name, radius, location, segments=24, ring_count=16, material=None
 # ════════════════════════════════════════════════════════════════════════════
 def build_tsc():
     clear_scene()
+    scene = bpy.context.scene if hasattr(bpy.context, "scene") and bpy.context.scene else bpy.data.scenes[0]
     col = bpy.data.collections.new("TSC_TuringScienceCenter")
-    bpy.context.scene.collection.children.link(col)
+    scene.collection.children.link(col)
+    if hasattr(bpy.context, "view_layer") and hasattr(bpy.context.view_layer, "active_layer_collection"):
+        for layer_col in bpy.context.view_layer.layer_collection.children:
+            if layer_col.name == col.name:
+                bpy.context.view_layer.active_layer_collection = layer_col
+                break
 
     # Materials
     m_body = create_pbr_material("TSC_Mat_Body", "#1B2A4A", roughness=0.52, metallic=0.22)
@@ -210,8 +276,14 @@ def build_tsc():
 # ════════════════════════════════════════════════════════════════════════════
 def build_hec():
     clear_scene()
+    scene = bpy.context.scene if hasattr(bpy.context, "scene") and bpy.context.scene else bpy.data.scenes[0]
     col = bpy.data.collections.new("HEC_HopperEngineeringComplex")
-    bpy.context.scene.collection.children.link(col)
+    scene.collection.children.link(col)
+    if hasattr(bpy.context, "view_layer") and hasattr(bpy.context.view_layer, "active_layer_collection"):
+        for layer_col in bpy.context.view_layer.layer_collection.children:
+            if layer_col.name == col.name:
+                bpy.context.view_layer.active_layer_collection = layer_col
+                break
 
     # Materials
     m_body = create_pbr_material("HEC_Mat_Body", "#132E35", roughness=0.55, metallic=0.25)
@@ -288,8 +360,14 @@ def build_hec():
 # ════════════════════════════════════════════════════════════════════════════
 def build_ic():
     clear_scene()
+    scene = bpy.context.scene if hasattr(bpy.context, "scene") and bpy.context.scene else bpy.data.scenes[0]
     col = bpy.data.collections.new("IC_InnovationCenter")
-    bpy.context.scene.collection.children.link(col)
+    scene.collection.children.link(col)
+    if hasattr(bpy.context, "view_layer") and hasattr(bpy.context.view_layer, "active_layer_collection"):
+        for layer_col in bpy.context.view_layer.layer_collection.children:
+            if layer_col.name == col.name:
+                bpy.context.view_layer.active_layer_collection = layer_col
+                break
 
     # Materials
     m_body = create_pbr_material("IC_Mat_Body", "#261E3E", roughness=0.52, metallic=0.22)
@@ -351,8 +429,14 @@ def build_ic():
 # ════════════════════════════════════════════════════════════════════════════
 def build_ccc():
     clear_scene()
+    scene = bpy.context.scene if hasattr(bpy.context, "scene") and bpy.context.scene else bpy.data.scenes[0]
     col = bpy.data.collections.new("CCC_CentralCampusCenter")
-    bpy.context.scene.collection.children.link(col)
+    scene.collection.children.link(col)
+    if hasattr(bpy.context, "view_layer") and hasattr(bpy.context.view_layer, "active_layer_collection"):
+        for layer_col in bpy.context.view_layer.layer_collection.children:
+            if layer_col.name == col.name:
+                bpy.context.view_layer.active_layer_collection = layer_col
+                break
 
     # Materials
     m_body = create_pbr_material("CCC_Mat_Body", "#806044", roughness=0.64, metallic=0.12)
@@ -391,10 +475,17 @@ def build_ccc():
             location=(col_x, -hall_d / 2 - 0.12, hall_z),
             rotation=(0, angle, 0)
         )
-        col_obj = bpy.context.active_object
-        col_obj.name = f"CCC_DiagridCol_{col_i}"
-        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-        col_obj.data.materials.append(m_accent)
+        col_obj = get_active_object()
+        if col_obj:
+            col_obj.name = f"CCC_DiagridCol_{col_i}"
+            if hasattr(bpy.context, "view_layer"):
+                bpy.context.view_layer.objects.active = col_obj
+            col_obj.select_set(True)
+            try:
+                bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            except Exception:
+                pass
+            col_obj.data.materials.append(m_accent)
 
     # D. SIGNATURE AERODYNAMIC BARREL-VAULT CURVED CANOPY ROOF
     # Sweep concentric arch profiles along X so the shell, ends, and ribs share
@@ -579,9 +670,16 @@ def export_building(code, output_dir, blend_dir):
     }
 
 def main():
-    # File is in <project_root>/scripts/blender/generate_campus_buildings.py
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = os.path.dirname(os.path.dirname(script_dir))
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.dirname(os.path.dirname(script_dir))
+    except (NameError, TypeError):
+        # Fallback when executed inside Blender GUI Text Editor
+        root_dir = r"C:\Users\subba\OneDrive\Desktop\campusflow-main"
+
+    if not os.path.exists(root_dir) or not os.path.exists(os.path.join(root_dir, "web")):
+        root_dir = r"C:\Users\subba\OneDrive\Desktop\campusflow-main"
+
     output_dir = os.path.join(root_dir, "web", "public", "models")
     blend_dir = os.path.join(root_dir, "models", "blend")
 
